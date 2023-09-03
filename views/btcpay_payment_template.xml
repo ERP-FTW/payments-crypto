@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="btcpay_inline_form">
+                <div class="col mt-0 mb-0">
+                    <label for="customer_input" class="mt-0">
+                        <small><b>Bitcoin Instructions: Click Pay Now to be redirected to payment screen. Pay the QR code or invoice with your mobile wallet. After the payment is recognized click Return to be forwarded to confirmation.</b></small>
+                    </label>
+                </div>
+    </template>
+
+
+    <template id="redirect_form">
+        <form action="/payment/btcpay/createInvoice" method="post">
+            <input type="hidden" name="ref" t-att-value="reference"/>
+            <input type="hidden" name="ret_url" t-att-value="return_url"/>
+            <input type="hidden" name="amount" t-att-value="amount"/>
+            <input type="hidden" name="currency" t-att-value="currency_code"/>
+        </form>
+    </template>
+
+</odoo>
