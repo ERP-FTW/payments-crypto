@@ -1,1 +1,1 @@
-# mlr_ecommerce_btcpay
+# mlr_ecommerce_nowpayments
