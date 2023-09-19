@@ -8,7 +8,7 @@
     'summary': 'Integrate your POS with Bitcoin on-chain and lightning payments',
     'description': '',
     'data': [
-        'views/pos_payment_method_views.xml',
+        'views/pos_payment_method.xml',
     ],
     'depends': ['point_of_sale','mlr_pos_cryptopayments'],
     'installable': True,
