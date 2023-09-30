@@ -5,7 +5,7 @@
     'version': '1.0',
     'category': 'Sales/Point of Sale',
     'sequence': 6,
-    'summary': 'Integrate your POS with Bitcoin on-chain and lightning payments',
+    'summary': 'Integrate your POS with a large number of on-chain cryptocurrencies',
     'description': '',
     'data': [
         'views/pos_payment_method.xml',
