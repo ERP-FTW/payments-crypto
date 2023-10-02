@@ -1,0 +1,25 @@
+<odoo>
+    <data>
+        <record id="provider_form_now" model="ir.ui.view">
+            <field name="name">provider.form.now</field>
+            <field name="model">payment.provider</field>
+            <field name="inherit_id" ref="payment.payment_provider_form"/>
+             <field name="arch" type="xml">
+                <group name="provider_credentials" position="after">
+                    <group attrs="{'invisible': [('code', '!=', 'now')]}">
+                        <group>
+                            <field name="nowpayments_username" password="True"/>
+                            <field name="nowpayments_password" password="True"/>
+                            <button string="Connect now server"
+                                type="object"
+                                name="action_test_connection"
+                                class="btn-primary"
+                                colspan="4"
+                                icon="fa-television"/>
+                        </group>
+                    </group>
+                </group>
+             </field>
+        </record>
+    </data>
+</odoo>
