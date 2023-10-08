@@ -1,15 +1,14 @@
 {
-    "name": "MLR Ecommerce Now Payments 2",
-    "summary": "MLR Ecommerce Now Payments 2",
+    "name": "MLR ecommerce NowPayments",
+    "summary": "MLR ecommerce NowPayments",
     "author": "ERP",
     "website": "https://www.milightningrod.com",
     "category": "Ecommerce",
     "version": "1.0",
-    "depends": ["website", "mlr_ecommerce_cryptopayments"],
+    "depends": ["website"],
     "data": [
         "views/now_payment_template.xml",
         "data/now_payment_provider_data.xml",
-        "views/now_payment_form.xml",
         "data/now_payment_icons.xml",
         "views/now_payment_provider.xml",
     ],

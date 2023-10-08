@@ -1,21 +1,28 @@
 <odoo>
     <data>
-        <record id="provider_form_now" model="ir.ui.view">
-            <field name="name">provider.form.now</field>
+        <record id="provider_form_btcpay" model="ir.ui.view">
+            <field name="name">provider.form.btcpay</field>
             <field name="model">payment.provider</field>
             <field name="inherit_id" ref="payment.payment_provider_form"/>
              <field name="arch" type="xml">
-                <group name="provider_credentials" position="after">
-                    <group attrs="{'invisible': [('code', '!=', 'now')]}">
-                        <group>
-                            <field name="nowpayments_username" password="True"/>
-                            <field name="nowpayments_password" password="True"/>
-                            <button string="Connect now server"
+                <group name="provider_credentials" position="inside">
+                    <group attrs="{'invisible': [('code', '!=', 'btcpay')]}">
+                        <button string="Connect NowPayments server"
                                 type="object"
                                 name="action_test_connection"
                                 class="btn-primary"
-                                colspan="4"
+                                colspan="1"
                                 icon="fa-television"/>
+                        <group>
+                            <field name="code"/>
+                            <field name="btcpay_server_url"/>
+                            <field name="btcpay_api_key"/>
+                            <field name="btcpay_store_id"/>
+                            <field name="nowpayments_username"/>
+                            <field name="nowpayments_password"/>
+                            <field name="btcpay_expiration_minutes"/>
+                            <field name="btcpay_monitoring_minutes"/>
+                            <field name="btcpay_speed_policy"/>
                         </group>
                     </group>
                 </group>
