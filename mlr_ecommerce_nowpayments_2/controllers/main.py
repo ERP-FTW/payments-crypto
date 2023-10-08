@@ -51,35 +51,22 @@ class CustomController(Controller):
         try:
             _logger.info(f"Called now custom_process_transaction. Passed args are {post}")
             trn = request.env['payment.transaction'].sudo().search([('reference', '=', post['ref']),('provider_code', '=', 'now')])
-            #crypto_invoice_id = trn.mapped('crypto_invoice_id')[0]
-            #trn_amount = trn.mapped('amount')[0]
             apiRes = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET', 1)
             _logger.info(f"api response from return is {apiRes.json()}")
             if apiRes.status_code == 200:
                 resJson = apiRes.json()['data']
                 for payment in resJson:
                     _logger.info(f"payment is {payment}")
-                    if payment.get('order_id') == post['ref'] and payment.get('payment_status') == "confirmed":
-                        #sats = float(payment.get('outcome_amount'))
+                    if payment.get('order_id') == post['ref'] and payment.get('payment_status') == "finished":
                         trn.write({
                             'crypto_invoice_id': payment.get('payment_id'),
-                            # 'btcpay_payment_link': payment.get('checkoutLink'),
                             'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')), })
                         trn._set_done()
-                        _logger.info("order confirmed")
+                        _logger.info(f"{post['ref']} order confirmed")
                         return request.redirect('/payment/status')
-                    elif payment.get('order_id') == post['ref'] and payment.get('payment_status') == "waiting":
-                        sats = float(payment.get('outcome_amount'))
-                        trn.write({
-                            'crypto_invoice_id': payment.get('payment_id'),
-                            # 'btcpay_payment_link': payment.get('checkoutLink'),
-                            'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')),})
-                        trn._set_done()
-                        _logger.info("order waiting")
-                        return request.redirect('/payment/status')
-                else:
-                    _logger.info(f"Issue now custom_process_transaction, status is  Passing back {resJson['status']}")
-                    trn._set_error(f"Payment failed!, now Invoice status: {resJson['status']}")
+                _logger.info(f"Issue now custom_process_transaction")
+                trn._set_error(f"Payment failed!, NowPayments")
+                return request.redirect('/payment/status')
             else:
                 _logger.info(f"Issue while checking now invoice, retry after sometime, if issue persists, please contact support or write to us. Issue response code {apiRes.status_code}")
                 trn._set_error(f"Issue while checking now invoice, retry after sometime, if issue persists, please contact support or write to us. Issue response code {apiRes.status_code}")
