@@ -29,6 +29,9 @@ class PosPaymentMethod(models.Model):
     nowpayments_username = fields.Char(string='NowPayments Email')
     nowpayments_password = fields.Char(string='NowPayments Password')
     now_selected_crypto = fields.Selection([('eth','ETH'),('jasmy','jasmy'),('usdtkava','usdtkava'),('ada','ada'),('mx','mx'),('aave','aave'),('dgmoon','dgmoon'),('ark','ark'),('sun','sun'),('usdtarb','usdtarb'),('dash','dash'),('fdusderc20','fdusderc20'),('srk','srk'),('stpt','stpt'),('maticmainnet','maticmainnet'),('ggtkn','ggtkn'),('tlos','tlos'),('zen','zen'),('vib','vib'),('atom','atom'),('ape','ape'),('gusd','gusd'),('ctsi','ctsi'),('ilv','ilv'),('usdcop','usdcop'),('klv','klv'),('dai','dai'),('front','front'),('usddbsc','usddbsc'),('cspr','cspr'),('chz','chz'),('ttc','ttc'),('flokibsc','flokibsc'),('epic','epic'),('atlas','atlas'),('busdbsc','busdbsc'),('trvl','trvl'),('bat','bat'),('firo','firo'),('rune','rune'),('cult','cult'),('xtz','xtz'),('wbtcmatic','wbtcmatic'),('one','one'),('enj','enj'),('stkk','stkk'),('tenshi','tenshi'),('xlm','xlm'),('jst','jst'),('cusd','cusd'),('quack','quack'),('link','link'),('rep','rep'),('trx','trx'),('dao','dao'),('btc','btc'),('xcur','xcur'),('usdtbsc','usdtbsc'),('shib','shib'),('uni','uni'),('cromainnet','cromainnet'),('ont','ont'),('vet','vet'),('eos','eos'),('kas','kas'),('busdmatic','busdmatic'),('hbar','hbar'),('usdtdot','usdtdot'),('brise','brise'),('dino','dino'),('ntvrk','ntvrk'),('usdp','usdp'),('strax','strax'),('shibbsc','shibbsc'),('algo','algo'),('qtum','qtum'),('tusd','tusd'),('btg','btg'),('fitfi','fitfi'),('bifi','bifi'),('klvmainnet','klvmainnet'),('xyo','xyo'),('near','near'),('om','om'),('zbc','zbc'),('fun','fun'),('usdterc20','usdterc20'),('cudos','cudos'),('gari','gari'),('busd','busd'),('iotx','iotx'),('ethw','ethw'),('sol','sol'),('usdcmatic','usdcmatic'),('coti','coti'),('sxpmainnet','sxpmainnet'),('mana','mana'),('neo','neo'),('brgbsc','brgbsc'),('icx','icx'),('hotcross','hotcross'),('usdcarb','usdcarb'),('zil','zil'),('usdcsol','usdcsol'),('tfuel','tfuel'),('luna','luna'),('ocean','ocean'),('wintrc20','wintrc20'),('pit','pit'),('cake','cake'),('etc','etc'),('bel','bel'),('onigi','onigi'),('idbsc','idbsc'),('eurt','eurt'),('ftt','ftt'),('kiba','kiba'),('tko','tko'),('poolx','poolx'),('bttc','bttc'),('now','now'),('tomo','tomo'),('usdcarc20','usdcarc20'),('usdtmatic','usdtmatic'),('cfx','cfx'),('cvc','cvc'),('dcr','dcr'),('usddtrc20','usddtrc20'),('doge','doge'),('usdtop','usdtop'),('usdtarc20','usdtarc20'),('1inchbsc','1inchbsc'),('ton','ton'),('avn','avn'),('ht','ht'),('id','id'),('rvn','rvn'),('xvg','xvg'),('fil','fil'),('yfi','yfi'),('tup','tup'),('sand','sand'),('etharb','etharb'),('apt','apt'),('fluf','fluf'),('klay','klay'),('zksync','zksync'),('ltc','ltc'),('galaerc20','galaerc20'),('arb','arb'),('nwc','nwc'),('usdj','usdj'),('usdttrc20','usdttrc20'),('marsh','marsh'),('zec','zec'),('dogecoin','dogecoin'),('bttcbsc','bttcbsc'),('pivx','pivx'),('gas','gas'),('cro','cro'),('1inch','1inch'),('babydoge','babydoge'),('hot','hot'),('usdcbsc','usdcbsc'),('grt','grt'),('gal','gal'),('brisemainnet','brisemainnet'),('okb','okb'),('gafa','gafa'),('knc','knc'),('xcad','xcad'),('kibabsc','kibabsc'),('usdtsol','usdtsol'),('matic','matic'),('axs','axs'),('waves','waves'),('xem','xem'),('hex','hex'),('raca','raca'),('bch','bch'),('usdtalgo','usdtalgo'),('dot','dot'),('ftm','ftm'),('pyusd','pyusd'),('egld','egld'),('daiarb','daiarb'),('fdusdbsc','fdusdbsc'),('tloserc20','tloserc20'),('avaxc','avaxc'),('boba','boba'),('sfund','sfund'),('theta','theta'),('rjv','rjv'),('c98','c98'),('pika','pika'),('cns','cns'),('bnbbsc','bnbbsc'),('avax','avax'),('xaut','xaut'),('arpa','arpa'),('arv','arv'),('super','super'),('verse','verse'),('ethbsc','ethbsc'),('divi','divi'),('blocks','blocks'),('dgb','dgb'),('ftmmainnet','ftmmainnet'),('bnbmainnet','bnbmainnet'),('bsv','bsv'),('chr','chr'),('xdc','xdc'),('poodl','poodl'),('bone','bone'),('floki','floki'),('gt','gt'),('kishu','kishu'),('nano','nano'),('nftb','nftb'),('sysevm','sysevm'),('xrp','xrp'),('guard','guard'),('lunc','lunc'),('geth','geth'),('omg','omg'),('leash','leash'),('xmr','xmr'),('tusdtrc20','tusdtrc20'),('kmd','kmd'),('usdc','usdc'),('hoge','hoge'),('keanu','keanu'),('lgcy','lgcy'),('usdcalgo','usdcalgo'),('bad','bad'),], string='Selected Cryptocurrency')
+    now_sandbox = fields.Boolean(string='Conducting sandbox testing')
+    now_sandbox_case = fields.Selection([('success','success'),('common','common'),('failed','failed'),('partially_paid','partially_paid')], string='Sandbox case to test')
+
 
     def call_cryptopay_api(self,payload,api,method,jwt=0):
         try:
@@ -47,7 +50,7 @@ class PosPaymentMethod(models.Model):
                 apiRes=requests.get(request_url,headers=headers)
             elif method == "POST":
                 apiRes = requests.post(request_url, data=json.dumps(payload), headers=headers)
-            _logger.info(f"Completed Nodeless call_nodeless_api, status {apiRes.status_code}. Passing back {apiRes.json()}")
+            _logger.info(f"Completed Now call_cryptopay_api, status {apiRes.status_code}. Passing back {apiRes.json()}")
             return apiRes
         except Exception as e:
             _logger.info("An exception occurred with Now call_cryptopay_api. API call failure: %s", e.args)
@@ -59,13 +62,28 @@ class PosPaymentMethod(models.Model):
         else:
             return super()._test_connection()
 
-    def create_crypto_invoice_payment_link(self, args):
+
+
+    def minimum_invoice_amount(self,now_selected_crypto):
+        try:
+            payload = {
+                "pay_currency": now_selected_crypto,}
+            minimum_invoice_amount = self.call_cryptopay_api(payload, '/v1/min-amount?currency_from=' + now_selected_crypto + '&fiat_equivalent=usd', 'GET')
+            return minimum_invoice_amount
+        except Exception as e:
+            message = "An exception occurred with Now minimum_invoice_amount: " + str(e)
+            _logger.info(message)
+            return {"code": message}
+
+    def create_crypto_invoice_payment_link(self, args, now_sandbox, now_sandbox_case):
         try:
             _logger.info(f"Called Now create_crypto_invoice_payment_link. Passed args are {args}")
             payload = {
                 "price_amount": args['amount'],
                 "price_currency": self.env.ref('base.main_company').currency_id.name,
                 "order_id": args['order_id'],}
+            #if now_sandbox == True:
+            #    payload["case"] = now_sandbox_case
             create_invoice_api = self.call_cryptopay_api(payload, '/v1/invoice', 'POST')
             if create_invoice_api.status_code != 200:
                 return {"code": create_invoice_api.status_code}
@@ -79,18 +97,12 @@ class PosPaymentMethod(models.Model):
                 "conversion_rate": 'TBD'}
             _logger.info(f"Completed Now create_crypto_invoice_payment_link. Passing back {inv_json}")
             return inv_json
-        except:
-            _logger.info("An exception occurred with Now create_crypto_invoice_payment_link")
-            return {"code": "An exception occurred with Now create_crypto_invoice_payment_link"}
+        except Exception as e:
+            message = "An exception occurred with Now create_crypto_invoice_payment_link: " + str(e)
+            _logger.info(message)
+            return {"code": message}
 
-
-    def minimum_invoice_amount(self,now_selected_crypto):
-        payload = {
-            "pay_currency": now_selected_crypto,}
-        minimum_invoice_amount = self.call_cryptopay_api(payload, '/v1/min-amount?currency_from=' + now_selected_crypto + '&fiat_equivalent=usd', 'GET')
-        return minimum_invoice_amount
-
-    def create_crypto_invoice_direct_invoice(self, args,now_selected_crypto):
+    def create_crypto_invoice_direct_invoice(self, args, now_sandbox, now_sandbox_case, now_selected_crypto):
         try:
             _logger.info(f"Called Now create_crypto_invoice_direct_invoice. Passed args are {args}")
             minimum_amount = self.minimum_invoice_amount(now_selected_crypto)
@@ -105,6 +117,8 @@ class PosPaymentMethod(models.Model):
                 "price_currency": self.env.ref('base.main_company').currency_id.name,
                 "pay_currency": now_selected_crypto,
                 "order_id": args['order_id'], }
+            if now_sandbox == True:
+                payload["case"] = now_sandbox_case
             create_invoice_api = self.call_cryptopay_api(payload, '/v1/payment', 'POST')
             if create_invoice_api.status_code != 201:
                 return {"code": create_invoice_api.status_code}
@@ -119,9 +133,10 @@ class PosPaymentMethod(models.Model):
                 "conversion_rate": conversion_rate}
             _logger.info(f"Completed Now create_crypto_invoice_direct_invoice. Passing back {inv_json}")
             return inv_json
-        except:
-            _logger.info("An exception occurred with Now create_crypto_invoice_direct_invoice.")
-            return {"code": "An exception occurred with Now create_crypto_invoice_direct_invoice."}
+        except Exception as e:
+            message = "An exception occurred with Now create_crypto_invoice_direct_invoice: " + str(e)
+            _logger.info(message)
+            return {"code": message}
 
 
     @api.model
@@ -131,6 +146,10 @@ class PosPaymentMethod(models.Model):
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'now':
                 return super().create_crypto_invoice(args)
+            now_sandbox = cryptopay_pm['now_sandbox']
+            now_sandbox_case = ""
+            if now_sandbox == True:
+                now_sandbox_case = cryptopay_pm['now_sandbox_case']
             now_payment_flow = cryptopay_pm['now_payment_flow']
             if cryptopay_pm.crypto_minimum_amount > args['amount']:
                 return {"code": "Below minimum amount of method: "+str(self.env.ref('base.main_company').currency_id.symbol)+str(cryptopay_pm.crypto_minimum_amount)}
@@ -138,14 +157,15 @@ class PosPaymentMethod(models.Model):
                 return {"code": "Above maximum amount of method: "+str(self.env.ref('base.main_company').currency_id.symbol)+str(cryptopay_pm.crypto_maximum_amount)}
             if now_payment_flow == 'direct invoice':
                 now_selected_crypto = cryptopay_pm['now_selected_crypto']
-                create_invoice_api = cryptopay_pm.create_crypto_invoice_direct_invoice(args,now_selected_crypto)
+                create_invoice_api = cryptopay_pm.create_crypto_invoice_direct_invoice(args, now_sandbox, now_sandbox_case, now_selected_crypto)
                 return create_invoice_api
             else:
-                create_invoice_api = cryptopay_pm.create_crypto_invoice_payment_link(args)
+                create_invoice_api = cryptopay_pm.create_crypto_invoice_payment_link(args, now_sandbox, now_sandbox_case)
                 return create_invoice_api
-        except:
-            _logger.info("An exception occurred with Now create_crypto_invoice.")
-            return {"code":"An exception occurred with Now create_crypto_invoice."}
+        except Exception as e:
+            message = "An exception occurred with Now create_crypto_invoice: " + str(e)
+            _logger.info(message)
+            return {"code": message}
 
     def check_payment_status_payment_link(self, args):
         try:
@@ -166,9 +186,10 @@ class PosPaymentMethod(models.Model):
                         payment_to_return = payment
             _logger.info(f"Completed Now check_payment_status_payment_link. Passing back {payment_to_return}")
             return payment_to_return
-        except:
-            _logger.info("An exception occurred with Now check_payment_status_payment_link.")
-            return {"code": "An exception occurred with Now check_payment_status_payment_link."}
+        except Exception as e:
+            message = "An exception occurred with Now check_payment_status_payment_link: " + str(e)
+            _logger.info(message)
+            return {"payment_status": message}
     def check_payment_status_direct_invoice(self, args):
         try:
             _logger.info(f"Called Now check_payment_status_direct_invoice. Passed args are {args}")
@@ -180,9 +201,10 @@ class PosPaymentMethod(models.Model):
                 return false
             _logger.info(f"Completed Now check_payment_status_payment_link. Passing back {invoice_status_api.json()}")
             return invoice_status_api.json()
-        except:
-            _logger.info("An exception occurred with Now check_payment_status_direct_invoice.")
-            return {"code": "An exception occurred with Now check_payment_status_direct_invoice."}
+        except Exception as e:
+            message = "An exception occurred with Now check_payment_status_direct_invoice: " + str(e)
+            _logger.info(message)
+            return {"payment_status": message}
 
     @api.model 
     def now_check_payment_status(self, args):
@@ -199,7 +221,8 @@ class PosPaymentMethod(models.Model):
                 check_payment_api = cryptopay_pm.check_payment_status_payment_link(args)
                 _logger.info(f"Completed Now now_check_payment_status. Passing back {check_payment_api}")
                 return check_payment_api
-        except:
-            _logger.info("An exception occurred with Now now_check_payment_status.")
-            return {"code": "An exception occurred with Now now_check_payment_status."}
+        except Exception as e:
+            message = "An exception occurred with Now now_check_payment_status: " + str(e)
+            _logger.info(message)
+            return {"payment_status": message}
 

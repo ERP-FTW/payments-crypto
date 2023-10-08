@@ -72,7 +72,7 @@ try {
                     silent: true,
                 });
 
-                if (api_resp.payment_status == 'Paid') {
+                if (api_resp.payment_status == 'finished') {
                     line.crypto_payment_status = 'Invoice Paid';
                     line.invoiced_crypto_amount = api_resp.pay_amount;
                     let conversion_rate = line.amount/line.invoiced_crypto_amount;

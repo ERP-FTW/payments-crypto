@@ -25,7 +25,7 @@ odoo.define("point_of_sale.NowValidatePaymentScreen", function (require) {
                 console.log(api_resp);
                 console.log(api_resp.payment_status);
 
-                if (api_resp.payment_status == 'waiting') {
+                if (api_resp.payment_status == 'finished') {
                      console.log("valid now transaction");
                      line.invoiced_crypto_amount = api_resp.pay_amount;
                      line.cryptopay_payment_type = api_resp.pay_currency;
@@ -34,33 +34,33 @@ odoo.define("point_of_sale.NowValidatePaymentScreen", function (require) {
                      line.crypto_payment_status = 'Invoice Paid';
                      line.set_payment_status('done');
 				}
-                                else if (api_resp.payment_status == 'new') {
+                                else if (api_resp.payment_status == 'waiting' || api_resp.payment_status == 'not_found' || api_resp.payment_status == 'found') {
 	                                this.showPopup("ErrorPopup", {
-       		                                 title: this.env._t("Payment Request Pending"),
-               		                         body: this.env._t("Payment Pending, retry after customer confirms"),
+       		                                 title: this.env._t("Payment Request Unpaid"),
+               		                         body: this.env._t("Payment Unpaid, retry after customer confirms funds have been sent. Status: " + api_resp.payment_status),
                        		        });
                                 }
 
-                                else if (api_resp.payment_status == 'found') {
+                                else if (api_resp.payment_status == 'confirming' || api_resp.payment_status == 'confirmed' || api_resp.payment_status == 'sending') {
 	                                this.showPopup("ErrorPopup", {
        		                                 title: this.env._t("Payment Request Pending"),
-               		                         body: this.env._t("Payment Pending, retry after customer confirms"),
+               		                         body: this.env._t("Payment Pending, funds are being transferred and will be valid once confirmed. Status: " + api_resp.payment_status),
                        		        });
                                 }
 
-                                else if (api_resp.payment_status == 'not_found') {
+                                else if (api_resp.payment_status == 'partially_paid'  || api_resp.payment_status == 'refunded') {
 	                                this.showPopup("ErrorPopup", {
-       		                                 title: this.env._t("Payment Request Pending"),
-               		                         body: this.env._t("Payment Pending, retry after customer confirms"),
+       		                                 title: this.env._t("Payment Request Dispute"),
+               		                         body: this.env._t("Payment Pending, partial payment or customer requested refund. Have manager confirm with customer. Status: " + api_resp.payment_status),
                        		        });
                                 }
 
 
-				else if (api_resp.payment_status == 'expired') {
+				else if (api_resp.payment_status == 'expired' || api_resp.payment_status == 'failed') {
 						console.log("expired now transaction");
 				        this.showPopup("ErrorPopup", {
-                                                 title: this.env._t("Payment Request Expired"),
-                                                 body: this.env._t("Payment Request expired, retry to send another send request"),
+                                                 title: this.env._t("Payment Request Failed"),
+                                                 body: this.env._t("Payment Request failed, retry to send another send request. Status: " + api_resp.payment_status),
                                         });
 				}}
 				catch (error) {
