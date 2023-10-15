@@ -3,7 +3,7 @@
 Lightning Rod Ecommerce Now Payments Readme
 
 Overview
-<br>This custom module for Odoo 16+ adds BTCpay server as a payment provider to the Ecommerce application. BTCpay server is a potentially self-hosted Bitcoin payment gateway/provider which is queried by API calls from Odoo. BTCpay server account access by API is provided to Odoo and a Bitcoin onchain/lightning option is added to the customer by checkout portal link. If the Bitcoin payment option is selected by a customer, they are forwarded to a BTCpay site with a created invoice and QR code for payment. After the payment is confirmed the customer can be redirected back to the Odoo online store receipt page and the order is registered and queued.
+<br>This custom module for Odoo 16+ adds NowPayments as a payment provider to the Ecommerce application. BTCpay server is a potentially self-hosted Bitcoin payment gateway/provider which is queried by API calls from Odoo. BTCpay server account access by API is provided to Odoo and a Bitcoin onchain/lightning option is added to the customer by checkout portal link. If the Bitcoin payment option is selected by a customer, they are forwarded to a BTCpay site with a created invoice and QR code for payment. After the payment is confirmed the customer can be redirected back to the Odoo online store receipt page and the order is registered and queued.
 
 Prerequisites (versions)
 <br>Compatible with Odoo 16
@@ -20,6 +20,7 @@ Installation (see this video for tutorial on Odoo module installation)
 Setup
 
 1. In Odoo navigate to Website-> Ecommerce -> Payment Providers.
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/742b4021-f496-4673-8568-1883b69956bc)
 
 2. Click on BTCpay to open the record.
 3. Enter a Name for the Instance. 
