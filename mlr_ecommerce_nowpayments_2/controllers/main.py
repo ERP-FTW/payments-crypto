@@ -57,13 +57,14 @@ class CustomController(Controller):
                 resJson = apiRes.json()['data']
                 for payment in resJson:
                     _logger.info(f"payment is {payment}")
-                    if payment.get('order_id') == post['ref'] and payment.get('payment_status') == "finished":
-                        trn.write({
-                            'crypto_invoice_id': payment.get('payment_id'),
-                            'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')), })
-                        trn._set_done()
-                        _logger.info(f"{post['ref']} order confirmed")
-                        return request.redirect('/payment/status')
+                    if payment.get('order_id') == post['ref']:
+                        if payment.get('payment_status') == "finished" or payment.get('payment_status') == "confirmed" or payment.get('payment_status') == "sending":
+                            trn.write({
+                                'crypto_invoice_id': payment.get('payment_id'),
+                                'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')), })
+                            trn._set_done()
+                            _logger.info(f"{post['ref']} order confirmed")
+                            return request.redirect('/payment/status')
                 _logger.info(f"Issue now custom_process_transaction")
                 trn._set_error(f"Payment failed!, NowPayments")
                 return request.redirect('/payment/status')
