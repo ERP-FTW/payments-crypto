@@ -3,12 +3,12 @@
 Lightning Rod Ecommerce Now Payments Readme
 
 Overview
-<br>This custom module for Odoo 16+ adds NowPayments as a payment provider to the Ecommerce application. BTCpay server is a potentially self-hosted Bitcoin payment gateway/provider which is queried by API calls from Odoo. BTCpay server account access by API is provided to Odoo and a Bitcoin onchain/lightning option is added to the customer by checkout portal link. If the Bitcoin payment option is selected by a customer, they are forwarded to a BTCpay site with a created invoice and QR code for payment. After the payment is confirmed the customer can be redirected back to the Odoo online store receipt page and the order is registered and queued.
+<br>This custom module for Odoo 16+ adds NowPayments as a payment provider to the Ecommerce application.  NowPayments acts as a payment gateway/provider for a large number of cryptocurrencies and will also convert between chains based on your preference. NowPayments account access by API is provided to Odoo and a cryptocurrency option is added to the customer checkout. If the cryptocurrency payment option is selected by a customer, they are forwarded to a NowPayments site with a created invoice and QR code for payment. After the payment is confirmed the customer can be redirected back to the Odoo online store receipt page and the order is registered and queued.
 
 Prerequisites (versions)
 <br>Compatible with Odoo 16
 <br>Postgres 14+
-<br>BTCpay server with API access
+<br>NowPayments account with API access
 <br>mlr_ecommerce_cryptopayments custom module
 
 Installation (see this video for tutorial on Odoo module installation)
@@ -21,33 +21,35 @@ Setup
 
 1. In Odoo navigate to Website-> Ecommerce -> Payment Providers.
 ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/742b4021-f496-4673-8568-1883b69956bc)
-
-2. Click on BTCpay to open the record.
+2. Click on Now to open the record.
 3. Enter a Name for the Instance. 
-4. Login into your BTCpay server and navigate to Account -> API Key. Create a key for use with Odoo.
-5. From BTCpay server copy the following information and paste in the Odoo Instance record: the server base URL, API key, and store ID. Enter a minimum and maximum fiat amount.
-6. Click Connect to BTCpay to verify the information is correct. If it is correct a green popup will affirm so, if it is incorrect a red popup will appear.
-   
+4. Login into your NowPayments account and navigate to Account -> API Key. Create a key for use with Odoo.
+5. From NowPayments copy the following information and paste in the Odoo Instance record: the server base URL, API key, user name and password. Enter a minimum and maximum fiat amount.
+6. Click Connect to Now to verify the information is correct. If it is correct a green popup will affirm so, if it is incorrect a red popup will appear.
+   ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/6de1b7ab-54ca-46c4-a524-8c6f211793e3)
 7. In Configuration -> Payment Form select the icon for lightning, in Configuration -> Payment Followup select the Payment Journal.
-   
-8. Select Enable to make BTCpay instance a current method and save (the first time a new Accounting Journal BTCpay will be created and used for recording transactions).
+   ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/37800745-9667-42d0-8b3e-b5d6472b3111)
+8. Select Enable to make NowPayments a current method and save.
 9. To have an invoice automatically created which will show the payment was post go to Website -> Configuration -> Settings -> Invoicing -> Automatic Invoicing.
-10. Activate the Sales application if wishing to use online payment links for Invoices. Enable Sales -> Configuration -> Settings -> Quotations & Orders -> Online Payment.
+10. To enable online payment of invoices go to Invoicing -> Configuration -> Settings -> Customer Payments -> Invoice Online Payment.
+11. Activate the Sales application if wishing to use online payment links for Invoices. Enable Sales -> Configuration -> Settings -> Quotations & Orders -> Online Payment.
    
 
 Operation
 Online Shop
 1. A customer will navigate to the Shop section of the website and add items to the cart. After initiating the checkout and filling in customer information the available payment methods will be displayed.
-   
-2. The customer can select the Bitcoin option and directions will appear below.
-   
+   ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/e4497110-17f1-4c3f-9de3-66b4dfc84e98)
+2. The customer can select the Now Payments option and directions will appear below.
+   ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/49a7eab2-8941-40cb-b9fa-a7ce2ff496a7)
 3. After clicking Pay Now  the customer will be taken to a BTCpay server page with the invoice and QR code to be paid.
-   
+   ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/bb953be5-df62-4d02-ba48-555116e7b84a)
 4. The customer scans the QR code or pastes the invoice text as a send from their wallet.
-    
+    ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/a0793c83-89e9-4e76-a2c5-7cdfa8dd85e5)
 5. Upon BTCpay server confirmation of the order the customer will have a button to click or be returned automatically to the receipt page of the Odoo site.
-  
+  ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/52c2b95c-54f5-43e6-a056-63d861c34ca1)
 6. Odoo will process the order and create a sales order for fulfillment.
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/f026d7ea-6c83-4f70-a87c-03eb0f317141)
+
 
 
 
