@@ -55,19 +55,21 @@ Online Shop
 
 Invoicing
 1. Create a quote from Sales -> Orders -> Quotes -> New. Enter the customer, timeframe, and product information. Create the quote and send to a customer.
-  
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/31acbffe-a791-483d-a27e-4f5de1b1aa55)
 2. Confirm the quote once accepted to change status to a Sales Order.
-  
+  ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/1e47717a-04e8-45a7-adbf-67063279a0ad)
 3. Click Create Invoice to make the invoice for Billing. Select your preferred options.
-
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/f7e9ab59-be38-43c8-9107-9b46826f160e)
 4. Create the payment link to send to the customer for online payment with Action > Generate a Payment Link.
-   
+   ![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/0342dccf-7db9-4441-b82b-8484902a907d)
 5. Copy the payment link and use the Send & Print button to convey to the customer.
-
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/6432c708-0589-4620-920d-ce45e6230d93)
 6. Visiting the payment link will show the enabled online payment providers.
-
-7. The customer will be taken to the third-party site and returned upon payment. The customer will be taken to a payment confirmation page and have access to a customer account history portal if they have an account.
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/a26c5aab-50f3-4fbd-847c-3598146442bf)
+7. The customer will be taken to the third-party site with the option to select among cryptocurrencies.
+![image](https://github.com/ERP-FTW/mlr_ecommerce_nowpayments/assets/124227412/79267081-3c9a-4bc1-888a-60a18a3b0077)
+8. Upon completion of the payment process, the customer will be taken to a payment confirmation page and have access to a customer account history portal if they have an account.
    
-8. Viewing the invoice will show that it is paid.
+10. Viewing the invoice will show that it is paid.
 
 
