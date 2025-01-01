@@ -10,6 +10,7 @@
     'data': [
         'views/pos_payment_method.xml',
     ],
+    'images': ['static/description/icon.png'],
     'depends': ['point_of_sale','mlr_pos_cryptopayments'],
     'installable': True,
     'assets': {
