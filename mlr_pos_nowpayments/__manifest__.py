@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'POS Crypto Payments - NowPayments',
-    "author": "MLR, ERP and SS",
-    'version': '1.0',
+    'author': "MLR - MI Lightning Rod",
+    'version': '16.0',
     'category': 'Sales/Point of Sale',
     'sequence': 6,
     'summary': 'Integrate your POS with a large number of on-chain cryptocurrencies through NowPayments',
@@ -19,4 +19,6 @@
         ],
     },
     'license': 'LGPL-3',
+    'price': '50.00',
+    'currency': 'USD',
 }
