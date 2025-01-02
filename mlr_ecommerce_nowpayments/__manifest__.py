@@ -1,10 +1,10 @@
 {
-    "name": "MLR Ecommerce Now Payments 2",
-    "summary": "MLR Ecommerce Now Payments 2",
-    "author": "ERP",
+    "name": "MLR Ecommerce Now Payments",
+    "summary": "MLR Ecommerce Now Payments",
+    "author": "MLR - MI Lightning Rod",
     "website": "https://www.milightningrod.com",
     "category": "Ecommerce",
-    "version": "1.0",
+    "version": "16.0",
     "depends": ["website", "mlr_ecommerce_cryptopayments"],
     "data": [
         "views/now_payment_template.xml",
@@ -18,5 +18,5 @@
     "auto_install": False,
     'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
-    "license": "OPL-1",
+    "license": "LGPL-3",
 }
