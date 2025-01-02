@@ -6,6 +6,7 @@
     "category": "Ecommerce",
     "version": "16.0",
     "depends": ["website", "mlr_ecommerce_cryptopayments"],
+    'images': ['static/description/icon.png'],
     "data": [
         "views/now_payment_template.xml",
         "data/now_payment_provider_data.xml",
@@ -19,4 +20,6 @@
     'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
     "license": "LGPL-3",
+    "price": "50.00",
+    "currency": "USD",
 }
