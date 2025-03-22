@@ -5,19 +5,16 @@
             <field name="model">payment.provider</field>
             <field name="inherit_id" ref="payment.payment_provider_form"/>
             <field name="arch" type="xml">
-                <!-- Always show group -->
                 <group name="provider_credentials" position="after">
                     <group name="now_credentials">
-                        <!-- Move invisibility to fields + button -->
-                        <field name="nowpayments_username" password="True" attrs="{'invisible': [('code', '!=', 'now')]}"/>
-                        <field name="nowpayments_password" password="True" attrs="{'invisible': [('code', '!=', 'now')]}"/>
+                        <field name="nowpayments_username" password="True"/>
+                        <field name="nowpayments_password" password="True"/>
                         <button string="Connect now server"
                                 type="object"
                                 name="action_test_connection"
                                 class="btn-primary"
                                 colspan="4"
-                                icon="fa-television"
-                                attrs="{'invisible': [('code', '!=', 'now')]}"/>
+                                icon="fa-television"/>
                     </group>
                 </group>
             </field>
