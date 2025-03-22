@@ -6,7 +6,7 @@
         <field name="is_crypto_provider">true</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="image_128" type="base64" file="mlr_ecommerce_nowpayments/static/description/icon.png"/>
-        <field name="display_as">Now Payments powered by MI Lightning Rod</field>
+        <!-- <field name="display_as">Now Payments powered by MI Lightning Rod</field> -->
         <field name="inline_form_view_id" ref="now_inline_form"/>
         <field name="redirect_form_view_id" ref="redirect_form"/>
     </record>
