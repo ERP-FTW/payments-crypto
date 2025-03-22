@@ -11,7 +11,7 @@
         "views/now_payment_template.xml",
         "data/now_payment_provider_data.xml",
         "views/now_payment_form.xml",
-        "data/now_payment_icons.xml",
+        #"data/now_payment_icons.xml",
         "views/now_payment_provider.xml",
     ],
     "installable": True,
