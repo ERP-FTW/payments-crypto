@@ -4,20 +4,21 @@
             <field name="name">provider.form.now</field>
             <field name="model">payment.provider</field>
             <field name="inherit_id" ref="payment.payment_provider_form"/>
-             <field name="arch" type="xml">
+            <field name="arch" type="xml">
                 <group name="provider_credentials" position="after">
-                    <group name="now_credentials" attrs="{'invisible': [('code', '!=', 'now')]}">
-                        <field name="nowpayments_username" password="True"/>
-                        <field name="nowpayments_password" password="True"/>
+                    <group name="now_credentials">
+                        <field name="nowpayments_username" password="True" attrs="{'invisible': [('code', '!=', 'now')]}"/>
+                        <field name="nowpayments_password" password="True" attrs="{'invisible': [('code', '!=', 'now')]}"/>
                         <button string="Connect now server"
                                 type="object"
                                 name="action_test_connection"
                                 class="btn-primary"
                                 colspan="4"
-                                icon="fa-television"/>
+                                icon="fa-television"
+                                attrs="{'invisible': [('code', '!=', 'now')]}"/>
                     </group>
                 </group>
-             </field>
+            </field>
         </record>
     </data>
 </odoo>
