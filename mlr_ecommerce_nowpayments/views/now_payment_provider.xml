@@ -7,6 +7,7 @@
             <field name="arch" type="xml">
                 <group name="provider_credentials" position="after">
                     <group name="now_credentials" modifiers="{'invisible': [['code', '!=', 'now']]}" string="NowPayments Settings">
+                        <field name="code" invisible="1"/>
                         <field name="nowpayments_username" password="True"/>
                         <field name="nowpayments_password" password="True"/>
                         <button string="Connect now server"
