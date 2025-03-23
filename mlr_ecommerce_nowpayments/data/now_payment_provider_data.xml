@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <odoo>
     <record id="payment_provider_now" model="payment.provider">
-        <field name="name">now</field>
-        <field name="code">now</field>
+        <field name="name">NowPayments</field>
+        <field name="code">NowPayments</field>
         <field name="is_crypto_provider">true</field>
         <field name="company_id" ref="base.main_company"/>
         <field name="image_128" type="base64" file="mlr_ecommerce_nowpayments/static/description/icon.png"/>
