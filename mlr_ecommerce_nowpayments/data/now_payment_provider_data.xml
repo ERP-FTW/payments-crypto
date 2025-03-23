@@ -9,5 +9,7 @@
         <!-- <field name="display_as">Now Payments powered by MI Lightning Rod</field> -->
         <field name="inline_form_view_id" ref="now_inline_form"/>
         <field name="redirect_form_view_id" ref="redirect_form"/>
+        <field name="payment_method_ids"
+           eval="[Command.set([ref('payment_method_nowpayments')])]"/>
     </record>
 </odoo>
