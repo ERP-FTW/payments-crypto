@@ -6,7 +6,7 @@
             <field name="inherit_id" ref="payment.payment_provider_form"/>
             <field name="arch" type="xml">
                 <group name="provider_credentials" position="after">
-                    <group name="now_credentials">
+                    <group name="now_credentials" modifiers="{'invisible': [['code', '!=', 'now']]}"/>
                         <field name="nowpayments_username" password="True"/>
                         <field name="nowpayments_password" password="True"/>
                         <button string="Connect now server"
