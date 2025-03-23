@@ -6,23 +6,18 @@
             <field name="inherit_id" ref="payment.payment_provider_form"/>
             <field name="arch" type="xml">
                 <group name="provider_credentials" position="inside">
-                    <group name="provider_credentials" position="before">
-                        <div invisible="code != 'now'">
-                        <label string="NowPayments Settings" class="o_form_label"/>
-                        <div class="o_row">
+                    <!-- Your custom fields block -->
+                    <group name="now_credentials" invisible="code != 'now'">
                         <field name="nowpayments_username" password="True"/>
                         <field name="nowpayments_password" password="True"/>
-                        </div>
-                    <button string="Connect Now Server"
-                type="object"
-                name="action_test_connection"
-                class="btn-primary"
-                colspan="2"
-                icon="fa-television"
-                invisible="state == 'enabled'"/>
-                        </div>
+                        <button string="Connect Now Server"
+                                type="object"
+                                name="action_test_connection"
+                                class="btn-primary"
+                                colspan="4"
+                                icon="fa-television"
+                                invisible="state == 'enabled'"/>
                     </group>
-
                 </group>
             </field>
         </record>
