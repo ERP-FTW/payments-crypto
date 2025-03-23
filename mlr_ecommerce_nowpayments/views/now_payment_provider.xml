@@ -5,7 +5,7 @@
             <field name="model">payment.provider</field>
             <field name="inherit_id" ref="payment.payment_provider_form"/>
             <field name="arch" type="xml">
-                <group name="provider_credentials" position="after">
+                <group name="crypto_credentials" position="inside">
                     <!-- Your custom fields block -->
                     <group name="now_credentials" invisible="code != 'now'">
                         <field name="nowpayments_username" password="True"/>
