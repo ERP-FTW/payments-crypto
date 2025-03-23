@@ -10,6 +10,7 @@
     "data": [
         "views/now_payment_template.xml",
         "data/now_payment_provider_data.xml",
+        "data/now_payment_method_data.xml",
         "views/now_payment_form.xml",
         #"data/now_payment_icons.xml",
         "views/now_payment_provider.xml",
