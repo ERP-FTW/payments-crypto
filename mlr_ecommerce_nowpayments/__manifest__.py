@@ -4,7 +4,7 @@
     "author": "MLR - MI Lightning Rod",
     "website": "https://www.milightningrod.com",
     "category": "Ecommerce",
-    "version": "16.0",
+    "version": "17.0",
     "depends": ["website", "mlr_ecommerce_cryptopayments"],
     'images': ['static/description/icon.png'],
     "data": [
