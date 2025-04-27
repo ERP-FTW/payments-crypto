@@ -106,7 +106,8 @@ class CustomController(Controller):
             payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
             _logger.info(f"Called now payment method. Passed args are {payment_method}")
             if apiRes.status_code == 200:
-                trn.write({'crypto_invoice_id': apiRes_json.get('id')})
+                trn.write({'crypto_invoice_id': apiRes_json.get('id'),
+                          'payment_method_id': payment_method.id,})
                 _logger.info(f"Completed now create_invoice. Passing back {apiRes_json.get('invoice_url')}")
                 return request.redirect(apiRes_json.get('invoice_url'), local=False)
             else:
