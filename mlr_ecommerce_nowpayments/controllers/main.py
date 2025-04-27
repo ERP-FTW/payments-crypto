@@ -53,20 +53,25 @@ class CustomController(Controller):
             trn = request.env['payment.transaction'].sudo().search([('reference', '=', post['ref']),('provider_code', '=', 'now')])
             apiRes = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET', 1)
             _logger.info(f"api response from return is {apiRes.json()}")
-            payment_method_line = journal.inbound_payment_method_line_ids[:1] if journal else None                            
-            payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
-            _logger.info(f"Called now payment method. Passed args are {payment_method_line} {payment_method}")
             if apiRes.status_code == 200:
                 resJson = apiRes.json()['data']
                 for payment in resJson:
                     _logger.info(f"payment is {payment}")
                     if payment.get('order_id') == post['ref']:
                         if payment.get('payment_status') == "finished" or payment.get('payment_status') == "confirmed" or payment.get('payment_status') == "sending":
-                            payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
-                            trn.write({
-                                'crypto_invoice_id': payment.get('payment_id'),
-                                'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')),
-                                'payment_method_id': payment_method.id if payment_method else None,})
+                            tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data('now', {'order_id': post['ref']})
+                            payment_data = {
+                                    'payment_status': payment.get('payment_status'),
+                                    'payment_id': payment.get('payment_id'),
+                                    'amount': payment.get('price_amount'),
+                                    'currency_code': payment.get('price_currency'),}
+                                # Update extra fields like crypto_invoice_id if you want, but mainly call _handle_notification_data
+                                tx_sudo._handle_notification_data('now', payment_data)
+                            ##payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
+                            #trn.write({
+                            #    'crypto_invoice_id': payment.get('payment_id'),
+                            #    'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')),
+                            #    'payment_method_id': payment_method.id if payment_method else None,})
                             #trn._set_done()
                             _logger.info(f"{post['ref']} order confirmed")
                             return request.redirect('/payment/status')
