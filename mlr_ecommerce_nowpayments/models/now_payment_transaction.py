@@ -47,7 +47,15 @@ class PaymentTransaction(models.Model):
         _logger.info(f"Processing NowPayments notification: {notification_data}")
 
         super()._process_notification_data(notification_data)
+        
         if self.provider_code != 'now':
+            journal = self.provider_id.journal_id
+            payment_method_line = journal.inbound_payment_method_line_ids[:1] if journal else None
+            if payment_method_line:
+                self.payment_method_line_id = payment_method_line.id
+                _logger.info(f"Processing NowPayments payment_method_line: {payment_method_line.id}")
+            else:
+                _logger.warning("No inbound payment method line found for NowPayments journal.")
             return
 
         self.provider_reference = notification_data.get('payment_id')
