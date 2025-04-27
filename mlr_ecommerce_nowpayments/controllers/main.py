@@ -64,7 +64,7 @@ class CustomController(Controller):
                                 'crypto_invoice_id': payment.get('payment_id'),
                                 'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')),
                                 'payment_method_id': payment_method.id if payment_method else None,})
-                            trn._set_done()
+                            #trn._set_done()
                             _logger.info(f"{post['ref']} order confirmed")
                             return request.redirect('/payment/status')
                 _logger.info(f"Issue now custom_process_transaction")
