@@ -1,126 +1,70 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
-import pprint
-import requests
-import json
 
-from odoo.http import Controller, request, route
+from odoo import api, models, fields
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
+class PaymentTransaction(models.Model):
+    _inherit = 'payment.transaction'
 
-# TODO
-# auth should be public or something else for create invoice?
+    crypto_invoice_id = fields.Char('NowPayments Invoice ID')
 
-class CustomController(Controller):
-    _return_url = '/payment/now/return'
-    _create_invoice = '/payment/now/createInvoice'
+    def _get_specific_rendering_values(self, processing_values):
+        """Override to provide NowPayments-specific checkout info."""
+        res = super()._get_specific_rendering_values(processing_values)
+        if self.provider_code != 'now':
+            return res
 
-    def nowApiCall(self, payload, api, method, jwt=0):
-        try:
-            _logger.info(f"Called now nowApiCall. Passed args are {payload}")
-            crypto_details = request.env['payment.provider'].sudo().search([('code', '=', 'now')])
-            base_url = crypto_details.mapped('crypto_server_url')[0]
-            api_key = crypto_details.mapped('crypto_api_key')[0]
-            #store_id = crypto_details.mapped('now_store_id')[0]
-            server_url = f"{base_url}{api}"
-            if jwt == 0:
-                headers = {"x-api-key": (api_key), "Content-Type": "application/json"}
-            if jwt == 1:
-                jwt_payload = {"email": crypto_details.mapped('nowpayments_username')[0],
-                               "password": crypto_details.mapped('nowpayments_password')[0]}
-                jwt_response = self.nowApiCall(jwt_payload, '/v1/auth', 'POST', 0)
-                jwtoken = jwt_response.json()['token']
-                headers = {"x-api-key": (api_key), "Content-Type": "application/json",
-                           "Authorization": "Bearer " + jwtoken}
-            #headers = {"Authorization": "Bearer %s" % (api_key), "Content-Type": "application/json", "Accept": "application/json"}
-            _logger.info(f"value of server_url is {server_url}, method is {method}, and payload is {payload}")
-            if method == "GET":
-                apiRes = requests.get(server_url, headers=headers)
-            elif method == "POST":
-                apiRes = requests.post(server_url, data=json.dumps(payload), headers=headers)
-            _logger.info(f"Completed now nowApiCall. Passing back {apiRes.json()}")
-            return apiRes
-        except:
-            _logger.info(f"An exception occurred with now nowApiCall.")
+        return {
+            'reference': self.reference,
+            'amount': self.amount,
+            'currency_code': self.currency_id.name,
+        }
+
+    def _get_tx_from_notification_data(self, provider_code, notification_data):
+        """Find transaction based on NowPayments notification."""
+        tx = super()._get_tx_from_notification_data(provider_code, notification_data)
+        if provider_code != 'now' or len(tx) == 1:
+            return tx
+
+        reference = notification_data.get('order_id')
+        tx = self.search([
+            ('reference', '=', reference),
+            ('provider_code', '=', 'now')
+        ], limit=1)
+        if not tx:
+            raise ValidationError(
+                "NowPayments: No transaction found matching reference %s." % reference
+            )
+        return tx
+
+    def _process_notification_data(self, notification_data):
+        """Process NowPayments notification and update transaction state."""
+        self.ensure_one()
+        _logger.info(f"Processing NowPayments notification: {notification_data}")
+
+        super()._process_notification_data(notification_data)
+        if self.provider_code != 'now':
             return
 
-    @route(_return_url, type='http', auth='public', methods=['GET', 'POST'], csrf=False)
-    def custom_process_transaction(self, **post):
-        try:
-            _logger.info(f"Called now custom_process_transaction. Passed args are {post}")
-            trn = request.env['payment.transaction'].sudo().search([('reference', '=', post['ref']),('provider_code', '=', 'now')])
-            apiRes = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET', 1)
-            _logger.info(f"api response from return is {apiRes.json()}")
-            if apiRes.status_code == 200:
-                resJson = apiRes.json()['data']
-                for payment in resJson:
-                    _logger.info(f"payment is {payment}")
-                    if payment.get('order_id') == post['ref']:
-                        if payment.get('payment_status') == "finished" or payment.get('payment_status') == "confirmed" or payment.get('payment_status') == "sending":
-                            tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data('now', {'order_id': post['ref']})
-                            payment_data = {
-                                    'payment_status': payment.get('payment_status'),
-                                    'payment_id': payment.get('payment_id'),
-                                    'amount': payment.get('price_amount'),
-                                    'currency_code': payment.get('price_currency'),}
-                                # Update extra fields like crypto_invoice_id if you want, but mainly call _handle_notification_data
-                            tx_sudo._handle_notification_data('now', payment_data)
-                            ##payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
-                            #trn.write({
-                            #    'crypto_invoice_id': payment.get('payment_id'),
-                            #    'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')),
-                            #    'payment_method_id': payment_method.id if payment_method else None,})
-                            #trn._set_done()
-                            _logger.info(f"{post['ref']} order confirmed")
-                            return request.redirect('/payment/status')
-                _logger.info(f"Issue now custom_process_transaction")
-                trn._set_error(f"Payment failed!, NowPayments")
-                return request.redirect('/payment/status')
-            else:
-                _logger.info(f"Issue while checking now invoice, retry after sometime, if issue persists, please contact support or write to us. Issue response code {apiRes.status_code}")
-                trn._set_error(f"Issue while checking now invoice, retry after sometime, if issue persists, please contact support or write to us. Issue response code {apiRes.status_code}")
-            _logger.info(f"Completed now custom_process_transaction. Passing back {apiRes.json()}")
-            return request.redirect('/payment/status')
-        except:
-            _logger.info(f"An exception occurred with now custom_process_transaction.")
-            trn._set_error(f"Issue while checking now invoice, retry after sometime, if issue persists, please contact support. An exception occurred in now custom_process_transaction,")
-            return request.redirect('/payment/status')
+        self.provider_reference = notification_data.get('payment_id')
 
-    @route(_create_invoice, type='http', auth='public', methods=['POST'], csrf=False)
-    def create_invoice(self, **post):
-        try:
-            _logger.info(f"Called now create_invoice. Passed args are {post}")
-            trn = request.env['payment.transaction'].sudo().search([('reference', '=', post['ref']), ('provider_code', '=', 'now')])
-            crypto_details = request.env['payment.provider'].sudo().search([('code', '=', 'now')])
-            crypto_min_amount = crypto_details.mapped('crypto_min_amount')[0]
-            crypto_max_amount = crypto_details.mapped('crypto_max_amount')[0]
-            if float(post['amount']) <= crypto_min_amount or float(post['amount']) >= crypto_max_amount:
-                #return {"type": "ir.actions.client","tag": "display_notification","params": {"title": "below min","message": "below amount","sticky": False,"type": "danger"}
-                return request.redirect('/shop/payment')
-            web_base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
-            checkout = f"{web_base_url}/payment/now/return?ref={post['ref']}"
-            payload = {
-            "price_amount": post['amount'],
-            "price_currency": post['currency'],
-            "success_url": checkout,
-            "order_id": post['ref']}
-            apiRes = self.nowApiCall(payload, '/v1/invoice', 'POST')
-            apiRes_json = apiRes.json()
-            payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
-            _logger.info(f"Called now payment method. Passed args are {payment_method}")
-            if apiRes.status_code == 200:
-                trn.write({'crypto_invoice_id': apiRes_json.get('id'),
-                          'payment_method_id': payment_method.id,})
-                _logger.info(f"Completed now create_invoice. Passing back {apiRes_json.get('invoice_url')}")
-                return request.redirect(apiRes_json.get('invoice_url'), local=False)
-            else:
-                trn = request.env['payment.transaction'].sudo().search([('reference', '=', post['ref']), ('provider_code', '=', 'now')])
-                _logger.info("Issue while creating now invoice, retry after sometime, if issue persists, please contact support or write to us")
-                trn._set_error("Issue while creating now invoice, retry after sometime, if issue persists, please contact support or write to us")
-                return request.redirect('/payment/status')
-        except:
-            _logger.info("Issue while creating now invoice, retry after sometime, if issue persists, please contact support. An exception occurred in now create_invoice")
-            trn._set_error("Issue while creating now invoice, retry after sometime, if issue persists, please contact support. An exception occurred in now create_invoice")
-            return request.redirect('/payment/status')
+        payment_method = self.env['payment.method']._get_from_code('nowpayments')
+        self.payment_method_id = payment_method or self.payment_method_id
+
+        payment_status = notification_data.get('payment_status')
+        if not payment_status:
+            raise ValidationError("NowPayments: Missing payment status.")
+
+        if payment_status in ('waiting', 'confirming'):
+            self._set_pending()
+        elif payment_status in ('finished', 'confirmed', 'sending'):
+            self._set_done()
+        elif payment_status in ('failed', 'expired', 'refunded'):
+            self._set_canceled()
+        else:
+            _logger.warning(f"Unknown payment status from NowPayments: {payment_status}")
+            self._set_error(f"Unknown payment status: {payment_status}")
