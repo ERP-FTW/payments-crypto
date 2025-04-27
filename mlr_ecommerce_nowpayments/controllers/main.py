@@ -66,7 +66,7 @@ class CustomController(Controller):
                                     'amount': payment.get('price_amount'),
                                     'currency_code': payment.get('price_currency'),}
                                 # Update extra fields like crypto_invoice_id if you want, but mainly call _handle_notification_data
-                                tx_sudo._handle_notification_data('now', payment_data)
+                            tx_sudo._handle_notification_data('now', payment_data)
                             ##payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
                             #trn.write({
                             #    'crypto_invoice_id': payment.get('payment_id'),
