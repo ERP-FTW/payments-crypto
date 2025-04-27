@@ -59,9 +59,11 @@ class CustomController(Controller):
                     _logger.info(f"payment is {payment}")
                     if payment.get('order_id') == post['ref']:
                         if payment.get('payment_status') == "finished" or payment.get('payment_status') == "confirmed" or payment.get('payment_status') == "sending":
+                            payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
                             trn.write({
                                 'crypto_invoice_id': payment.get('payment_id'),
-                                'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')), })
+                                'crypto_invoiced_crypto_amount': float(payment.get('outcome_amount')),
+                                'payment_method_id': payment_method.id if payment_method else None,})
                             trn._set_done()
                             _logger.info(f"{post['ref']} order confirmed")
                             return request.redirect('/payment/status')
