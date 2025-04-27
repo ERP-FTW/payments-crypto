@@ -103,9 +103,8 @@ class CustomController(Controller):
             "order_id": post['ref']}
             apiRes = self.nowApiCall(payload, '/v1/invoice', 'POST')
             apiRes_json = apiRes.json()
-            payment_method_line = journal.inbound_payment_method_line_ids[:1] if journal else None                            
             payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
-            _logger.info(f"Called now payment method. Passed args are {payment_method_line} {payment_method}")
+            _logger.info(f"Called now payment method. Passed args are {payment_method}")
             if apiRes.status_code == 200:
                 trn.write({'crypto_invoice_id': apiRes_json.get('id')})
                 _logger.info(f"Completed now create_invoice. Passing back {apiRes_json.get('invoice_url')}")
