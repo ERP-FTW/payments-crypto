@@ -53,6 +53,9 @@ class CustomController(Controller):
             trn = request.env['payment.transaction'].sudo().search([('reference', '=', post['ref']),('provider_code', '=', 'now')])
             apiRes = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET', 1)
             _logger.info(f"api response from return is {apiRes.json()}")
+            payment_method_line = journal.inbound_payment_method_line_ids[:1] if journal else None                            
+            payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
+            _logger.info(f"Called now payment method. Passed args are {payment_method_line} {payment_method}")
             if apiRes.status_code == 200:
                 resJson = apiRes.json()['data']
                 for payment in resJson:
