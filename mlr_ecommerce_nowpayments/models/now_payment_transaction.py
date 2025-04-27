@@ -41,3 +41,40 @@ class PaymentTransaction(models.Model):
         }
 
     
+    def _process_notification_data(self, notification_data):
+        """ Override of payment to process the transaction based on NowPayments data.
+    
+        Note: self.ensure_one()
+    
+        :param dict notification_data: The notification data sent by the provider
+        :return: None
+        """
+        super()._process_notification_data(notification_data)
+        if self.provider_code != 'now':
+            return
+    
+        # Update the provider reference.
+        self.provider_reference = notification_data.get('payment_id')
+    
+        # Update the payment method.
+        payment_method = self.env['payment.method']._get_from_code('nowpayments')
+        self.payment_method_id = payment_method or self.payment_method_id
+    
+        # Update the payment state.
+        payment_status = notification_data.get('payment_status')
+        if not payment_status:
+            raise ValidationError("NowPayments: " + _("Received data with missing payment status."))
+        if payment_status in ('waiting', 'confirming'):
+            self._set_pending()
+        elif payment_status in ('finished', 'confirmed', 'sending'):
+            self._set_done()
+        elif payment_status in ('failed', 'expired', 'refunded'):
+            self._set_canceled()
+        else:
+            _logger.warning(
+                "NowPayments: Received unknown payment status '%s' for transaction reference %s",
+                payment_status, self.reference
+            )
+            self._set_error(
+                "NowPayments: " + _("Unknown payment status: %s", payment_status)
+            )
