@@ -55,7 +55,7 @@ class PaymentTransaction(models.Model):
             if provider_code != 'now' or len(tx) == 1:
                 return tx
     
-            reference = notification_data.get('item_number')
+            reference = notification_data.get('order_id')
             tx = self.search([('reference', '=', reference), ('provider_code', '=', 'now')])
             if not tx:
                 raise ValidationError(
