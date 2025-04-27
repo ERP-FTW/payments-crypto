@@ -49,6 +49,7 @@ class PaymentTransaction(models.Model):
         :param dict notification_data: The notification data sent by the provider
         :return: None
         """
+        _logger.info(f"Called now _process_notification_data. Passed args are {notification_data}")
         super()._process_notification_data(notification_data)
         if self.provider_code != 'now':
             return
@@ -78,3 +79,22 @@ class PaymentTransaction(models.Model):
             self._set_error(
                 "NowPayments: " + _("Unknown payment status: %s", payment_status)
             )
+
+
+
+    def _get_account_payment_values(self):
+        """Add payment method line for NowPayments to avoid missing payment method."""
+        _logger.info(f"Called now _get_account_payment_values.")
+        payment_values = super()._get_account_payment_values()
+
+        if self.provider_code == 'now' and not payment_values.get('payment_method_line_id'):
+            journal = self.provider_id.journal_id
+            payment_method_line = journal.inbound_payment_method_line_ids[:1] if journal else None
+            if not payment_method_line:
+                raise ValidationError(_("No inbound payment method line is defined on the NowPayments journal."))
+
+            payment_values.update({
+                'payment_method_line_id': payment_method_line.id,
+            })
+        
+        return payment_values
