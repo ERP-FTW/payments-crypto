@@ -21,7 +21,7 @@ class PaymentTransaction(models.Model):
 
 
     def _get_specific_rendering_values(self, processing_values):
-        """ Override of payment to return Paypal-specific rendering values.
+        """ Override of payment to return Nowpayments-specific rendering values.
 
         Note: self.ensure_one() from `_get_processing_values`
 
@@ -40,6 +40,28 @@ class PaymentTransaction(models.Model):
             'currency_code': self.currency_id.name,
         }
 
+
+
+      def _get_tx_from_notification_data(self, provider_code, notification_data):
+            """ Override of payment to find the transaction based on NowPayments data.
+    
+            :param str provider_code: The code of the provider that handled the transaction
+            :param dict notification_data: The notification data sent by the provider
+            :return: The transaction if found
+            :rtype: recordset of `payment.transaction`
+            :raise: ValidationError if the data match no transaction
+            """
+            tx = super()._get_tx_from_notification_data(provider_code, notification_data)
+            if provider_code != 'now' or len(tx) == 1:
+                return tx
+    
+            reference = notification_data.get('item_number')
+            tx = self.search([('reference', '=', reference), ('provider_code', '=', 'now')])
+            if not tx:
+                raise ValidationError(
+                    "NowPayments: " + _("No transaction found matching reference %s.", reference)
+                )
+            return tx
     
     def _process_notification_data(self, notification_data):
         """ Override of payment to process the transaction based on NowPayments data.
@@ -81,20 +103,3 @@ class PaymentTransaction(models.Model):
             )
 
 
-
-    def _get_account_payment_values(self):
-        """Add payment method line for NowPayments to avoid missing payment method."""
-        _logger.info(f"Called now _get_account_payment_values.")
-        payment_values = super()._get_account_payment_values()
-
-        if self.provider_code == 'now' and not payment_values.get('payment_method_line_id'):
-            journal = self.provider_id.journal_id
-            payment_method_line = journal.inbound_payment_method_line_ids[:1] if journal else None
-            if not payment_method_line:
-                raise ValidationError(_("No inbound payment method line is defined on the NowPayments journal."))
-
-            payment_values.update({
-                'payment_method_line_id': payment_method_line.id,
-            })
-        
-        return payment_values
