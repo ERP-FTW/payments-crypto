@@ -15,7 +15,7 @@
     'installable': True,
     'assets': {
         'point_of_sale._assets_pos': [
-            'mlr_pos_breez/static/**/*',
+            'mlr_pos_breez_greenlight/static/**/*',
         ],
     },
     'license': 'LGPL-3',
