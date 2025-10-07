@@ -27,18 +27,27 @@ class PosPaymentMethod(models.Model):
             _logger.info(f"Called Breez call_breez_sdk1 {self.breez_mnemonic} {self.api_key}")
             seed = breez_sdk.mnemonic_to_seed(self.breez_mnemonic)
             config = breez_sdk.default_config(
-                breez_sdk.EnvironmentType.PRODUCTION,
-                self.api_key,
-                breez_sdk.NodeConfig.GREENLIGHT(breez_sdk.GreenlightNodeConfig(None, self.breez_invite_code)))
-            _logger.info(f"Called Breez call_breez_sdk2")
-            # Customize the config object according to your needs
+                env_type=breez_sdk.EnvironmentType.PRODUCTION,
+                api_key=self.api_key,
+                node_config=breez_sdk.NodeConfig.GREENLIGHT(
+                    config=breez_sdk.GreenlightNodeConfig(
+                        partner_credentials=None,  # or GreenlightCredentials(...)
+                        invite_code=self.breez_invite_code  # keep your invite code here
+                    )
+                )
+            )
             config.working_dir = '/opt/breez'
+
             print(config.working_dir)
             _logger.info(f"Called Breez call_breez_sdk3")
             try:
                 # Connect to the Breez SDK make it ready for use
-                connect_request = breez_sdk.ConnectRequest(config, seed, restore_only=True)
-                sdk_services = breez_sdk.connect(connect_request, SDKListener())
+                connect_request = breez_sdk.ConnectRequest(
+                    config=config,
+                    seed=seed,
+                    restore_only=True,  # keep if you’re restoring an existing node
+                )
+                sdk_services = breez_sdk.connect(req=connect_request, listener=SDKListener())
                 logging.info('Starting')
                 return sdk_services
 
@@ -114,7 +123,7 @@ class PosPaymentMethod(models.Model):
                 "metadata": {
                     "orderId":str(self.breez_company_name) + " Order: " + str(args.get('order_id'))},
                 "checkout": {
-                    "speedPolicy": sbreez_expiration_minutestr(self.breez_speed_policy),
+                    "speedPolicy": breez_expiration_minutes(self.breez_speed_policy),
                     "expirationMinutes": lightning_expiration_minutes,},
                  "amount": amount_btc,
                 "currency": "BTC",}
@@ -144,7 +153,7 @@ class PosPaymentMethod(models.Model):
             _logger.info(f"Called Breez breez_create_crypto_invoice_direct_invoice. Passed args are {args}")
             invoiced_info = self.get_amount_sats(args)
             print(type(invoiced_info))
-            amount_millisats = int(invoiced_info['invoiced_sat_amount']) * 100000  # converts sats to millisats as required by breezserver
+            amount_millisats = int(invoiced_info['invoiced_sat_amount']) * 1000  # converts sats to millisats as required by breezserver
             #lightning_expiration_minutes = self.breez_expiration_minutes * 60  # conversion of expiration time from min to sec for submission to breez server
             #headers = {"Authorization": "Token %s" % (self.api_key), "Content-Type": "application/json"}
             #if self.breez_selected_crypto == 'lightning':
@@ -230,34 +239,80 @@ class PosPaymentMethod(models.Model):
 
     def breez_check_payment_status_direct_invoice(self, args):
         try:
-            _logger.info(f"Called Breez breez_check_payment_status_direct_invoice. Passed args are {args}")
+            _logger.info("Called Breez breez_check_payment_status_direct_invoice. Passed args are %s", args)
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'breez':
                 return super().breez_check_payment_status(args)
-            server_url = "/api/v1/stores/" + self.breez_invite_code + "/lightning/BTC/invoices/" + args['invoice_id']
-            invoice_status_api = cryptopay_pm.call_breez_api({}, server_url, 'GET')
-            if invoice_status_api.status_code != 200:
-                return false
-            _logger.info(f"Completed Breez breez_check_payment_status_direct_invoice. Passing back {invoice_status_api.json()}")
-            return invoice_status_api.json()
+
+            sdk = self.call_breez_sdk()  # NO extra positional args here
+
+            # Primary: look up by payment hash (we returned this as invoice_id when creating)
+            payment = sdk.payment_by_hash(args['invoice_id'])
+
+            # Fallback: if someone passed a bolt11 instead of the hash, try list_payments filter
+            if payment is None:
+                try:
+                    req = breez_sdk.ListPaymentsRequest(
+                        filters=breez_sdk.PaymentFilters(
+                            details=breez_sdk.PaymentDetailsFilters(bolt11=args['invoice_id'])
+                        ),
+                        include_failures=True,
+                        limit=1
+                    )
+                    lst = sdk.list_payments(req)
+                    payment = lst[0] if lst else None
+                except Exception as e:
+                    _logger.info("list_payments fallback failed: %s", e)
+
+            if payment is None:
+                _logger.info("Payment not found for id=%s", args['invoice_id'])
+                return {"code": 404, "status": "not_found"}
+
+            # Map status
+            status_enum = payment.status
+            status_str = getattr(status_enum, "name", str(status_enum)).lower()
+
+            # Extract LN details if present (best-effort)
+            bolt11 = None
+            open_channel_bolt11 = None
+            try:
+                ln = payment.details.ln.data
+                bolt11 = getattr(ln, "bolt11", None)
+                open_channel_bolt11 = getattr(ln, "open_channel_bolt11", None)
+            except Exception:
+                pass
+
+            result = {
+                "code": 0,
+                "status": status_str,  # e.g. 'complete', 'pending', 'failed'
+                "payment_hash": payment.id,  # hash you passed in
+                "amount_msat": payment.amount_msat,
+                "fee_msat": payment.fee_msat,
+                "description": payment.description,
+                "bolt11": bolt11,
+                "open_channel_bolt11": open_channel_bolt11,
+            }
+            _logger.info("Breez payment status: %s", result)
+            return result
+
         except Exception as e:
             message = "An exception occurred with Breez breez_check_payment_status_direct_invoice: " + str(e)
             _logger.info(message)
             return {"code": message}
 
-    @api.model 
+    @api.model
     def breez_check_payment_status(self, args):
         try:
             _logger.info(f"Called Breez breez_check_payment_status. Passed args are {args}")
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'breez':
                 return super().breez_check_payment_status(args)
-            if cryptopay_pm.breez_payment_flow == 'direct invoice':
-                check_payment_api = cryptopay_pm.breez_check_payment_status_direct_invoice(args)
-                return check_payment_api
-            else:
-                check_payment_api = cryptopay_pm.breez_check_payment_status_payment_link(args)
-                return check_payment_api
+            #if cryptopay_pm.breez_payment_flow == 'direct invoice':
+            check_payment_api = cryptopay_pm.breez_check_payment_status_direct_invoice(args)
+            return check_payment_api
+            #else:
+            #    check_payment_api = cryptopay_pm.breez_check_payment_status_payment_link(args)
+            #    return check_payment_api
         except Exception as e:
             message = "An exception occurred with Breez breez_check_payment_status: " + str(e)
             _logger.info(message)

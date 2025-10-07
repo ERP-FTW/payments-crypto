@@ -87,12 +87,13 @@ export class PaymentBreezPayment extends PaymentInterface {
                        'breez_check_payment_status',
                         [{ invoice_id: line.cryptopay_invoice_id, pm_id: line.payment_method.id, order_id: order_id }],
                     );
-					if (api_resp.status == 'Paid' || api_resp.status == 'Settled') {
+					if (api_resp.status == 'Paid' || api_resp.status == 'Settled' || api_resp.status == 'complete') {
 						console.log("valid breez transaction - timer");
 						line.crypto_payment_status = 'Invoice Paid';
+						line.set_payment_status('done');  // <-- ADD THIS
 						return true;
 					}
-					else if (api_resp.status == 'Expired' || api_resp.status == 'Invalid') {	
+					else if (api_resp.status == 'Expired' || api_resp.status == 'Invalid') {
 						console.log("invalid expired breez transaction - timer");
 						alert('Check invoice error: Invoice has expired');
 						line.crypto_payment_status = 'Invoice Expired';
@@ -102,7 +103,7 @@ export class PaymentBreezPayment extends PaymentInterface {
 					console.log(error);
 					return false;
 				}
-				await new Promise(r => setTimeout(r, 500));
+				await new Promise(r => setTimeout(r, 50000));
 			}
 		}
 		catch (error) {

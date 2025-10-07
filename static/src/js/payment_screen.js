@@ -31,7 +31,7 @@ patch(PaymentScreen.prototype, {
                     console.log(api_resp);
                     console.log(api_resp.status);
 
-                    if (api_resp.status == 'Paid' || api_resp.status == 'Settled') {
+                    if (api_resp.status == 'Paid' || api_resp.status == 'Settled'|| api_resp.status == 'complete') {
                         console.log("valid breez transaction");
                         line.crypto_payment_status = 'Invoice Paid';
                         line.set_payment_status('done');
