@@ -21,7 +21,8 @@ class PaymentTransaction(models.Model):
         return {
             'reference': self.reference,
             'amount': self.amount,
-            'currency_code': self.currency_id.name,
+            'currency_id': self.currency_id.name,
+            'api_url': '/payment/now/createInvoice',
         }
 
     def _get_tx_from_notification_data(self, provider_code, notification_data):

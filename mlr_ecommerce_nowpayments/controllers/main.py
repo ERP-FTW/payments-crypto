@@ -14,10 +14,11 @@ class NowPaymentsController(Controller):
     _create_invoice_url = '/payment/now/createInvoice'
 
     def nowApiCall(self, payload, api, method, jwt=0):
-        """Helper to call NowPayments API."""
         try:
+            _logger.info(f"Called nowApiCall")
+
             crypto_details = request.env['payment.provider'].sudo().search([('code', '=', 'now')], limit=1)
-            base_url = crypto_details.crypto_server_url
+            base_url = crypto_details.crypto_server_url.rstrip('/')  # <- normalize
             api_key = crypto_details.crypto_api_key
 
             server_url = f"{base_url}{api}"
@@ -31,17 +32,29 @@ class NowPaymentsController(Controller):
                 headers = {
                     "x-api-key": api_key,
                     "Content-Type": "application/json",
+                    "Accept": "application/json",
                     "Authorization": f"Bearer {jwtoken}",
                 }
             else:
-                headers = {"x-api-key": api_key, "Content-Type": "application/json"}
+                headers = {
+                    "x-api-key": api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                }
 
             if method == "GET":
-                response = requests.get(server_url, headers=headers)
+                response = requests.get(server_url, headers=headers, timeout=20)
             elif method == "POST":
-                response = requests.post(server_url, data=json.dumps(payload), headers=headers)
+                # ✅ send JSON correctly
+                response = requests.post(server_url, json=payload, headers=headers, timeout=20)
 
-            _logger.info(f"NowPayments API call to {server_url} returned: {response.json()}")
+            # ✅ robust logging: don't blow up on non-JSON
+            try:
+                body = response.json()
+            except Exception:
+                body = response.text[:500]  # log first 500 chars if not JSON
+
+            _logger.info("NOWPayments %s %s -> %s %s", method, server_url, response.status_code, body)
             return response
         except Exception as e:
             _logger.exception(f"Error during NowPayments API call: {e}")
@@ -53,7 +66,7 @@ class NowPaymentsController(Controller):
         try:
             _logger.info(f"Called create_invoice with data: {post}")
             trn = request.env['payment.transaction'].sudo().search([
-                ('reference', '=', post['ref']),
+                ('reference', '=', post['reference']),
                 ('provider_code', '=', 'now')
             ], limit=1)
 
@@ -67,13 +80,13 @@ class NowPaymentsController(Controller):
                 return request.redirect('/shop/payment')
 
             web_base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
-            success_url = f"{web_base_url}/payment/now/return?ref={post['ref']}"
+            success_url = f"{web_base_url}/payment/now/return?ref={post['reference']}"
 
             payload = {
                 "price_amount": amount,
-                "price_currency": post['currency'],
+                "price_currency": post['currency_id'],
                 "success_url": success_url,
-                "order_id": post['ref'],
+                "order_id": post['reference'],
             }
             api_response = self.nowApiCall(payload, '/v1/invoice', 'POST')
             api_response_json = api_response.json()
@@ -95,27 +108,32 @@ class NowPaymentsController(Controller):
             return request.redirect('/payment/status')
 
     @route(_return_url, type='http', auth='public', methods=['GET', 'POST'], csrf=False)
+    @route(_return_url, type='http', auth='public', methods=['GET', 'POST'], csrf=False)
     def custom_process_transaction(self, **post):
-        """Handle NowPayments return callback after checkout."""
         try:
             _logger.info(f"Handling NowPayments return with data: {post}")
+
+            # ✅ accept both ?ref=... and ?reference=...
+            ref = post.get('ref') or post.get('reference')
+
             tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-                'now', {'order_id': post.get('ref')}
+                'now', {'order_id': ref}  # ✅ pass the actual reference
             )
 
-            api_response = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET', jwt=1)
-            res_json = api_response.json().get('data', [])
+            api_response = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET',
+                                           jwt=1)
+            res_json = api_response.json().get('data', []) if api_response.ok else []
 
             for payment in res_json:
-                if payment.get('order_id') == post.get('ref'):
+                if payment.get('order_id') == ref:
                     notification_data = {
                         'payment_status': payment.get('payment_status'),
                         'payment_id': payment.get('payment_id'),
                         'amount': payment.get('price_amount'),
-                        'currency_code': payment.get('price_currency'),
+                        'currency_id': payment.get('price_currency'),
                     }
                     tx_sudo._handle_notification_data('now', notification_data)
-                    _logger.info(f"Processed NowPayments transaction for ref {post.get('ref')}")
+                    _logger.info(f"Processed NowPayments transaction for ref {ref}")
                     break
 
             return request.redirect('/payment/status')
@@ -123,3 +141,4 @@ class NowPaymentsController(Controller):
         except Exception as e:
             _logger.exception(f"Error handling NowPayments transaction return: {e}")
             return request.redirect('/payment/status')
+
