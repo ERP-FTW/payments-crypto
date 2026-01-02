@@ -1,0 +1,30 @@
+<odoo>
+  <record id="redirect_form" model="ir.ui.view">
+    <field name="name">nowpayments.redirect.form</field>
+    <field name="type">qweb</field>
+    <field name="key">mlr_ecommerce_nowpayments.redirect_form</field>
+    <field name="arch" type="xml">
+      <form t-att-action="api_url" method="post">
+        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+        <input type="hidden" name="reference" t-att-value="reference"/>
+        <input type="hidden" name="amount" t-att-value="amount"/>
+        <input type="hidden" name="currency_id" t-att-value="currency_id"/>
+        <input type="hidden" name="name" t-att-value="first_name"/>
+        <input type="hidden" name="email" t-att-value="email"/>
+        <input type="hidden" name="street" t-att-value="address1"/>
+        <input type="hidden" name="zip" t-att-value="zip_code"/>
+        <input type="hidden" name="city" t-att-value="city"/>
+        <input type="hidden" name="country" t-att-value="country"/>
+        <input type="hidden" name="custom" t-att-value="item_name"/>
+        <input type="hidden" name="notify_url" t-att-value="notify_url"/>
+        <button type="submit" width="100px" t-att-class="submit_class">
+          <img t-if="not submit_txt" src="/mlr_ecommerce_nowpayments/static/description/icon.png"/>
+          <span t-if="submit_txt">
+            <t t-esc="submit_txt"/>
+            <span class="fa fa-long-arrow-right"/>
+          </span>
+        </button>
+      </form>
+    </field>
+  </record>
+</odoo>
