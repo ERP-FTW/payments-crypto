@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="payment_icon_btc" model="payment.icon">
+        <field name="sequence">300</field>
+        <field name="name">btc</field>
+        <field name="image" type="base64" file="mlr_ecommerce_cryptopayments/static/img/btc.png"/>
+    </record>
+    <record id="payment_icon_lightning" model="payment.icon">
+        <field name="sequence">310</field>
+        <field name="name">lightning</field>
+        <field name="image" type="base64" file="mlr_ecommerce_cryptopayments/static/img/lightning.png"/>
+    </record>
+</odoo>
