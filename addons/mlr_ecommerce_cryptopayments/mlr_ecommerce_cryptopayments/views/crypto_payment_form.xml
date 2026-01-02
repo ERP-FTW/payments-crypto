@@ -1,0 +1,21 @@
+<odoo>
+    <data>
+        <record id="transaction_form_crypto" model="ir.ui.view">
+            <field name="name">transaction.form.crypto</field>
+            <field name="model">payment.transaction</field>
+            <field name="inherit_id" ref="payment.payment_transaction_form"/>
+             <field name="arch" type="xml">
+                <group name="transaction_details" position="after">
+                        <group name="crypto_payment_details">
+                            <field name="crypto_payment" />
+                            <field name="crypto_invoice_id" />
+                            <field name="crypto_payment_type" />
+                            <field name="crypto_conversion_rate" />
+                            <field name="crypto_invoiced_crypto_amount" />
+                            <field name="crypto_payment_link" style="width:50px"/>
+                        </group>
+                </group>
+             </field>
+        </record>
+    </data>
+</odoo>
