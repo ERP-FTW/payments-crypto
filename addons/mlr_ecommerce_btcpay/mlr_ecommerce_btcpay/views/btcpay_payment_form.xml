@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+        <record id="transaction_form_btcpay" model="ir.ui.view">
+            <field name="name">transaction.form.btcpay</field>
+            <field name="model">payment.transaction</field>
+            <field name="inherit_id" ref="payment.payment_transaction_form"/>
+             <field name="arch" type="xml">
+                <group name="transaction_details" position="after">
+                    <group>
+                        <field name="btcpay_invoiced_sat_amount"/>
+                    </group>
+                 </group>
+             </field>
+        </record>
+    </data>
+</odoo>
