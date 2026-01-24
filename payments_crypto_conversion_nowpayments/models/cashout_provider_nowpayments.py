@@ -14,7 +14,8 @@ class CryptoCashoutProvider(models.Model):
     _inherit = "crypto.cashout.provider"
 
     code = fields.Selection(
-        selection_add=[("nowpayments_fiat_payout", "NowPayments Fiat Payouts")]
+        selection_add=[("nowpayments_fiat_payout", "NowPayments Fiat Payouts")], 
+        ondelete={"nowpayments_fiat_payout": "set default"},
     )
 
     nowpayments_api_base_url = fields.Char(default="https://api.nowpayments.io/v1")
