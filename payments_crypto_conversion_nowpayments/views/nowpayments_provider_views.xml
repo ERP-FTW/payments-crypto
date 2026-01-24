@@ -5,7 +5,7 @@
         <field name="inherit_id" ref="payments_crypto_conversion.view_crypto_cashout_provider_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/group" position="inside">
-                <group string="NowPayments" attrs="{'invisible': [('code', '!=', 'nowpayments_fiat_payout')]}">
+                <group string="NowPayments" invisible="code != 'nowpayments_fiat_payout'">
                     <group>
                         <field name="nowpayments_api_base_url"/>
                         <field name="nowpayments_api_key" password="True"/>
