@@ -27,20 +27,20 @@
                         type="object"
                         string="Submit to Provider"
                         class="btn-primary"
-                        states="draft,submitted,processing"
+                        invisible="state not in ('draft', 'submitted', 'processing')"
                     />
                     <button
                         name="action_refresh_status"
                         type="object"
                         string="Refresh Status"
-                        states="submitted,processing,done,failed"
+                        invisible="state not in ('submitted', 'processing', 'done', 'failed')"
                     />
                     <button
                         name="action_post_crypto_outflow_payment"
                         type="object"
                         string="Post Crypto Outflow"
                         class="btn-secondary"
-                        states="submitted,processing,done"
+                        invisible="state not in ('submitted', 'processing', 'done')"
                     />
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted,processing,done,failed,canceled"/>
                 </header>
@@ -51,7 +51,7 @@
                             type="object"
                             class="oe_stat_button"
                             icon="fa-credit-card"
-                            attrs="{'invisible': [('account_payment_id', '=', False)]}"
+                            invisible="not account_payment_id"
                         >
                             <field name="account_payment_id" widget="statinfo" string="Payment"/>
                         </button>
@@ -60,7 +60,7 @@
                             type="object"
                             class="oe_stat_button"
                             icon="fa-exchange"
-                            attrs="{'invisible': [('currency_move_count', '=', 0)]}"
+                            invisible="currency_move_count == 0"
                         >
                             <field name="currency_move_count" widget="statinfo" string="Currency Moves"/>
                         </button>
@@ -103,7 +103,7 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Currency Moves" attrs="{'invisible': [('currency_move_count', '=', 0)]}">
+                        <page string="Currency Moves" invisible="currency_move_count == 0">
                             <field name="res_currency_move_ids" readonly="1">
                                 <list>
                                     <field name="name"/>
