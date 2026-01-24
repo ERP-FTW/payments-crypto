@@ -1,0 +1,36 @@
+<odoo>
+    <menuitem
+        id="menu_crypto_cashout_root"
+        name="Crypto Cashout"
+        parent="account.menu_finance_entries"
+        sequence="65"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_crypto_cashout_provider"
+        name="Providers"
+        parent="menu_crypto_cashout_root"
+        action="action_crypto_cashout_provider"
+        sequence="10"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_crypto_cashout_config"
+        name="Configurations"
+        parent="menu_crypto_cashout_root"
+        action="action_crypto_cashout_config"
+        sequence="20"
+        groups="base.group_user"
+    />
+
+    <menuitem
+        id="menu_crypto_cashout_payout"
+        name="Payouts"
+        parent="menu_crypto_cashout_root"
+        action="action_crypto_cashout_payout"
+        sequence="30"
+        groups="base.group_user"
+    />
+</odoo>

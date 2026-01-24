@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_crypto_cashout_provider_user,crypto.cashout.provider user,model_crypto_cashout_provider,base.group_user,1,1,1,1
+access_crypto_cashout_config_user,crypto.cashout.config user,model_crypto_cashout_config,base.group_user,1,1,1,1
+access_crypto_cashout_payout_user,crypto.cashout.payout user,model_crypto_cashout_payout,base.group_user,1,1,1,1
+access_crypto_cashout_withdrawal_user,crypto.cashout.withdrawal user,model_crypto_cashout_withdrawal,base.group_user,1,1,1,1
