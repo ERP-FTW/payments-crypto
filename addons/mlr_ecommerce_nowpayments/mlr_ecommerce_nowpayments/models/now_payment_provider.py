@@ -1,23 +1,38 @@
-
-import logging
-import uuid
-
 import requests
-from werkzeug.urls import url_encode, url_join, url_parse
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-_logger = logging.getLogger(__name__)
 
 class PaymentProvider(models.Model):
-    _inherit = 'payment.provider'
+    _inherit = "payment.provider"
 
     code = fields.Selection(
-        selection_add=[('now', "now")], ondelete={'now': 'set default'})
+        selection_add=[("now", "now")], ondelete={"now": "set default"}
+    )
     nowpayments_username = fields.Char(string="NowPayments Username")
     nowpayments_password = fields.Char(string="NowPayments Password")
-    #now_store_id = fields.Char(string='Store ID')
+    # now_store_id = fields.Char(string="Store ID")
+
+    @api.constrains("code", "journal_id", "state")
+    def _check_nowpayments_accounting_setup(self):
+        for provider in self:
+            if provider.code != "now" or provider.state not in ("enabled", "test"):
+                continue
+            journal = provider.journal_id
+            if not journal:
+                raise ValidationError(
+                    _(
+                        "NowPayments providers must define a journal before processing payments."
+                    )
+                )
+            if not journal.inbound_payment_method_line_ids:
+                raise ValidationError(
+                    _(
+                        "NowPayments journal '%s' must have at least one inbound payment method line."
+                    )
+                    % journal.display_name
+                )
 
     def test_now_server_connection(self):
         try:
@@ -50,8 +65,6 @@ class PaymentProvider(models.Model):
                 "title": title,
                 "message": messages,
                 "sticky": False,
-                "type": type
+                "type": type,
             },
         }
-
-

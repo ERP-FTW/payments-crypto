@@ -5,12 +5,18 @@
     "website": "https://www.milightningrod.com",
     "category": "Ecommerce",
     "version": "18.0",
-    "depends": ["website", "website_sale"],
-    'images': ['static/description/icon.png'],
+    "depends": [
+        "website",
+        "website_sale",
+        "payment",
+        "account",
+        "account_cryptocurrency",
+    ],
+    "images": ["static/description/icon.png"],
     "data": [
         "views/crypto_payment_provider.xml",
         "views/crypto_payment_form.xml",
-        "data/btc_payment_icons.xml"
+        "data/btc_payment_icons.xml",
     ],
     "installable": True,
     "application": False,
