@@ -1,0 +1,24 @@
+<odoo>
+    <record id="view_crypto_cashout_provider_form_nowpayments" model="ir.ui.view">
+        <field name="name">crypto.cashout.provider.form.nowpayments</field>
+        <field name="model">crypto.cashout.provider</field>
+        <field name="inherit_id" ref="payments_crypto_conversion.view_crypto_cashout_provider_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="inside">
+                <group string="NowPayments" invisible="code != 'nowpayments_fiat_payout'">
+                    <group>
+                        <field name="nowpayments_api_base_url"/>
+                        <field name="nowpayments_api_key" password="True"/>
+                        <field name="nowpayments_email"/>
+                        <field name="nowpayments_password" password="True"/>
+                        <field name="nowpayments_timeout"/>
+                    </group>
+                    <group>
+                        <field name="nowpayments_jwt_token" password="True"/>
+                        <field name="nowpayments_token_updated_at" readonly="1"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

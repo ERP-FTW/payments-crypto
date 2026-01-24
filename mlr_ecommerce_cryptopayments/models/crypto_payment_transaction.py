@@ -60,7 +60,7 @@ class PaymentTransaction(models.Model):
         related="crypto_rate",
         readonly=False,
     )
-    crypto_invoiced_crypto_amount = fields.Float(
+    crypto_invoiced_crypto_amount = fields.Monetary(
         string="Invoiced Crypto Amount",
         digits=(24, 12),
         related="crypto_amount",

@@ -1,0 +1,128 @@
+<odoo>
+    <record id="view_crypto_cashout_payout_tree" model="ir.ui.view">
+        <field name="name">crypto.cashout.payout.tree</field>
+        <field name="model">crypto.cashout.payout</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="config_id"/>
+                <field name="crypto_currency_id"/>
+                <field name="provider_payout_id"/>
+                <field name="requested_at"/>
+                <field name="state"/>
+                <field name="account_payment_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crypto_cashout_payout_form" model="ir.ui.view">
+        <field name="name">crypto.cashout.payout.form</field>
+        <field name="model">crypto.cashout.payout</field>
+        <field name="arch" type="xml">
+            <form string="Cashout Payout">
+                <header>
+                    <button
+                        name="action_submit_to_provider"
+                        type="object"
+                        string="Submit to Provider"
+                        class="btn-primary"
+                        invisible="state not in ('draft', 'submitted', 'processing')"
+                    />
+                    <button
+                        name="action_refresh_status"
+                        type="object"
+                        string="Refresh Status"
+                        invisible="state not in ('submitted', 'processing', 'done', 'failed')"
+                    />
+                    <button
+                        name="action_post_crypto_outflow_payment"
+                        type="object"
+                        string="Post Crypto Outflow"
+                        class="btn-secondary"
+                        invisible="state not in ('submitted', 'processing', 'done')"
+                    />
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,processing,done,failed,canceled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button
+                            name="action_open_payment"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-credit-card"
+                            invisible="not account_payment_id"
+                        >
+                            <field name="account_payment_id" widget="statinfo" string="Payment"/>
+                        </button>
+                        <button
+                            name="action_open_currency_moves"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-exchange"
+                            invisible="currency_move_count == 0"
+                        >
+                            <field name="currency_move_count" widget="statinfo" string="Currency Moves"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="company_id"/>
+                            <field name="config_id" domain="[('company_id', '=', company_id)]"/>
+                            <field name="cashout_provider_id" readonly="1"/>
+                            <field name="crypto_currency_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="provider_payout_id"/>
+                            <field name="requested_at"/>
+                            <field name="created_at"/>
+                            <field name="updated_at"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Notes"/>
+                    </group>
+                    <notebook>
+                        <page string="Withdrawals">
+                            <field name="withdrawal_ids" context="{'default_currency_id': crypto_currency_id}">
+                                <list editable="bottom">
+                                    <field name="currency_code"/>
+                                    <field name="currency_id" optional="show"/>
+                                    <field name="amount"/>
+                                    <field name="address"/>
+                                    <field name="extra_id"/>
+                                    <field name="provider_withdrawal_id"/>
+                                    <field name="batch_withdrawal_id" optional="hide"/>
+                                    <field name="status"/>
+                                    <field name="tx_hash"/>
+                                    <field name="error" optional="hide"/>
+                                    <field name="created_at" optional="hide"/>
+                                    <field name="requested_at" optional="hide"/>
+                                    <field name="updated_at" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Currency Moves" invisible="currency_move_count == 0">
+                            <field name="res_currency_move_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="direction"/>
+                                    <field name="date"/>
+                                    <field name="amount"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crypto_cashout_payout" model="ir.actions.act_window">
+        <field name="name">Cashout Payouts</field>
+        <field name="res_model">crypto.cashout.payout</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>
