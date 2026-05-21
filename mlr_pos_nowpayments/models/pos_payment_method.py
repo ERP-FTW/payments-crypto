@@ -42,7 +42,12 @@ class PosPaymentMethod(models.Model):
                 jwt_payload = {"email": self.nowpayments_username,
                                "password": self.nowpayments_password}
                 jwt_response = self.call_cryptopay_api(jwt_payload, '/v1/auth', 'POST', 0)
-                jwtoken = jwt_response.json()['token']
+                if jwt_response.status_code != 200:
+                    raise UserError(_("NowPayments auth failed with status %s. Please verify server URL and credentials.") % jwt_response.status_code)
+                jwt_json = jwt_response.json()
+                jwtoken = jwt_json.get('token')
+                if not jwtoken:
+                    raise UserError(_("NowPayments auth response did not include a token. Please verify server URL and credentials."))
                 headers = {"x-api-key": (self.api_key), "Content-Type": "application/json", "Authorization": "Bearer " + jwtoken}
             _logger.info("NowPayments API call prepared: endpoint=%s method=%s", api, method)
             if method == "GET":
