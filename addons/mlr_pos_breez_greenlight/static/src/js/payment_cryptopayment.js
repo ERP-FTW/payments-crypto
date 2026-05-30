@@ -37,9 +37,11 @@ export class PaymentBreezPayment extends PaymentInterface {
         line.cryptopay_payment_link_qr_code = `data:image/svg+xml;base64,${window.btoa(qrCodeSvg)}`;
         line.cryptopay_invoice_id = data.invoice_id;
         line.invoiced_crypto_amount = data.crypto_amt;
+        line.crypto_amount_currency = data.crypto_amt;
         line.cryptopay_payment_type = data.cryptopay_payment_type;
-        const conversionRate = line.amount / (line.invoiced_crypto_amount / 100000000);
-        line.conversion_rate = conversionRate.toFixed(2);
+        line.conversion_rate = data.conversion_rate || data.crypto_rate;
+        line.crypto_rate = data.crypto_rate || data.conversion_rate;
+        line.requested_sat_amount = data.requested_sat_amount;
         line.set_payment_status("cryptowaiting");
 
         return this._check_payment_status(line);
@@ -69,6 +71,8 @@ export class PaymentBreezPayment extends PaymentInterface {
 
             if (["paid", "settled", "complete"].includes(status)) {
                 line.crypto_payment_status = "Invoice Paid";
+                line.received_sat_amount = apiResp.received_sat_amount || line.requested_sat_amount;
+                line.provider_fee_sat = apiResp.provider_fee_sat || 0;
                 line.set_payment_status("done");
                 return true;
             }

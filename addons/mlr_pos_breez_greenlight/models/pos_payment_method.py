@@ -99,10 +99,11 @@ class PosPaymentMethod(models.Model):
     def get_amount_sats(self, pos_payment_obj, sdk_services=None):
         try:
             breez_conversion_rate = self.action_get_conversion_rate(sdk_services=sdk_services)
-            amount_sats = round((float(pos_payment_obj.get('amount')) / float(breez_conversion_rate)) * 100000000, 1)
+            amount_sats = int(round((float(pos_payment_obj.get('amount')) / float(breez_conversion_rate)) * 100000000))
             return {
                 'conversion_rate': breez_conversion_rate,
                 'invoiced_sat_amount': amount_sats,
+                'crypto_amount': amount_sats / 100000000,
             }
         except Exception as error:
             raise UserError(_('Get Millisat amount: %s') % error)
@@ -125,7 +126,9 @@ class PosPaymentMethod(models.Model):
                 'invoice': invoice,
                 'cryptopay_payment_link': f'lightning:{invoice}',
                 'cryptopay_payment_type': 'BTC-lightning',
-                'crypto_amt': float(amount_millisats) / 1000,
+                'crypto_amt': invoiced_info['crypto_amount'],
+                'crypto_rate': invoiced_info['conversion_rate'],
+                'requested_sat_amount': invoiced_info['invoiced_sat_amount'],
             }
             _logger.info('Created Breez invoice %s for payment method %s', result.get('invoice_id'), self.id)
             return result
@@ -164,6 +167,8 @@ class PosPaymentMethod(models.Model):
                 'payment_hash': payment.id,
                 'amount_msat': payment.amount_msat,
                 'fee_msat': payment.fee_msat,
+                'received_sat_amount': int(payment.amount_msat / 1000) if payment.amount_msat else 0,
+                'provider_fee_sat': int(payment.fee_msat / 1000) if payment.fee_msat else 0,
                 'description': payment.description,
             }
             _logger.info('Breez invoice %s status: %s', args.get('invoice_id'), result.get('status'))

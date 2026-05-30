@@ -67,9 +67,11 @@ export class PaymentBTCPayPayment extends PaymentInterface {
         line.cryptopay_payment_link_qr_code = "data:image/svg+xml;base64,"+ window.btoa(qr_code_svg);
         line.cryptopay_invoice_id = data.invoice_id;
         line.invoiced_crypto_amount = data.crypto_amt;
+        line.crypto_amount_currency = data.crypto_amt;
         line.cryptopay_payment_type = data.cryptopay_payment_type;
-        let conversion_rate = line.amount/(line.invoiced_crypto_amount/100000000);
-        line.conversion_rate = conversion_rate.toFixed(2);
+        line.conversion_rate = data.conversion_rate || data.crypto_rate;
+        line.crypto_rate = data.crypto_rate || data.conversion_rate;
+        line.requested_sat_amount = data.requested_sat_amount;
         console.log(line.is_crypto_payment);
         console.log(line.cryptopay_payment_link_qr_code);
         console.log(data.cryptopay_payment_type);

@@ -25,6 +25,8 @@ patch(PaymentScreen.prototype, {
 
                     if (["paid", "settled", "complete"].includes(status)) {
                         line.crypto_payment_status = "Invoice Paid";
+                        line.received_sat_amount = apiResp.received_sat_amount || line.requested_sat_amount;
+                        line.provider_fee_sat = apiResp.provider_fee_sat || 0;
                         line.set_payment_status("done");
                     } else if (["new", "unpaid", "processing", "pending"].includes(status)) {
                         line.set_payment_status("cryptowaiting");
