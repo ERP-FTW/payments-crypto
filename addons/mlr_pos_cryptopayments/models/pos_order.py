@@ -23,6 +23,17 @@ class PosOrderInherit(models.Model):
             'cryptopay_payment_link_qr_code',
             'invoiced_crypto_amount',
             'conversion_rate',
+            'fiat_currency_id',
+            'crypto_currency_id',
+            'crypto_amount_currency',
+            'crypto_rate',
+            'crypto_rate_datetime',
+            'requested_sat_amount',
+            'received_sat_amount',
+            'provider_fee_sat',
+            'provider_status',
+            'provider_completed_at',
+            'provider_raw_json',
             ]
 
 
@@ -39,6 +50,17 @@ class PosOrderInherit(models.Model):
                 'cryptopay_payment_link': ui_paymentline.get('cryptopay_payment_link'),
                 'invoiced_crypto_amount': ui_paymentline.get('invoiced_crypto_amount'),
                 'conversion_rate': ui_paymentline.get('conversion_rate'),
+                'fiat_currency_id': ui_paymentline.get('fiat_currency_id'),
+                'crypto_currency_id': ui_paymentline.get('crypto_currency_id'),
+                'crypto_amount_currency': ui_paymentline.get('crypto_amount_currency'),
+                'crypto_rate': ui_paymentline.get('crypto_rate'),
+                'crypto_rate_datetime': ui_paymentline.get('crypto_rate_datetime'),
+                'requested_sat_amount': ui_paymentline.get('requested_sat_amount'),
+                'received_sat_amount': ui_paymentline.get('received_sat_amount'),
+                'provider_fee_sat': ui_paymentline.get('provider_fee_sat'),
+                'provider_status': ui_paymentline.get('provider_status'),
+                'provider_completed_at': ui_paymentline.get('provider_completed_at'),
+                'provider_raw_json': ui_paymentline.get('provider_raw_json'),
             })
         return fields
 

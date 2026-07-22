@@ -10,10 +10,21 @@
                     <field name="is_crypto_payment"/>
                     <field name="cryptopay_payment_type"/>
                     <field name="cryptopay_invoice_id"/>
+                    <field name="fiat_currency_id"/>
+                    <field name="crypto_currency_id"/>
+                    <field name="crypto_amount_currency"/>
+                    <field name="crypto_rate"/>
+                    <field name="crypto_rate_datetime"/>
+                    <field name="requested_sat_amount"/>
+                    <field name="received_sat_amount"/>
+                    <field name="provider_fee_sat"/>
+                    <field name="provider_status"/>
+                    <field name="provider_completed_at"/>
+                    <field name="provider_raw_json"/>
                     <field name="conversion_rate"/>
                     <field name="invoiced_crypto_amount"/>
                     <field name="cryptopay_payment_link"/>
-                    <field name="currency_id"/>
+                    <field name="currency_id" readonly="1"/>
                 </xpath>
             </field>
         </record>

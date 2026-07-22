@@ -129,6 +129,7 @@ class PosPaymentMethod(models.Model):
                 "invoice": create_invoice_json['pay_address'],
                 "cryptopay_payment_link": now_selected_crypto + ":" + create_invoice_json['pay_address'],
                 "crypto_amt": round(create_invoice_json['pay_amount'],6),
+                "crypto_rate": conversion_rate,
                 "conversion_rate": conversion_rate}
             _logger.info(f"Completed Now create_crypto_invoice_direct_invoice. Passing back {inv_json}")
             return inv_json

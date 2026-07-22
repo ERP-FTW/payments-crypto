@@ -40,6 +40,8 @@ export class NowPaymentsPaymentInterface extends PaymentInterface {
             cryptopay_invoice_id: data.invoice_id,
             conversion_rate: data.conversion_rate,
             invoiced_crypto_amount: data.crypto_amt,
+            crypto_amount_currency: data.crypto_amt,
+            crypto_rate: data.crypto_rate || data.conversion_rate,
             crypto_payment_status: "Invoice created",
         };
 
@@ -81,8 +83,10 @@ export class NowPaymentsPaymentInterface extends PaymentInterface {
                 const invoicedAmount = apiResp.pay_amount || line.invoiced_crypto_amount;
                 line.update({
                     invoiced_crypto_amount: invoicedAmount,
+                    crypto_amount_currency: invoicedAmount,
                     cryptopay_payment_type: apiResp.pay_currency || line.cryptopay_payment_type,
                     conversion_rate: invoicedAmount ? Number(line.amount / invoicedAmount).toFixed(2) : line.conversion_rate,
+                    crypto_rate: invoicedAmount ? Number(line.amount / invoicedAmount).toFixed(2) : line.crypto_rate,
                     crypto_payment_status: "Invoice paid",
                 });
                 line.set_payment_status("done");

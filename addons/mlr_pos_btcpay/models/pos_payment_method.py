@@ -80,9 +80,10 @@ class PosPaymentMethod(models.Model):
     def get_amount_sats(self, pos_payment_obj): #obtains amount of satoshis to invoice by calling action_get_conversion_rate and and doing the math, returns dict of both values
         try:
             btcpay_conversion_rate = self.action_get_conversion_rate()
-            amount_sats = round((float(pos_payment_obj.get('amount')) / float(btcpay_conversion_rate)) * 100000000, 1) #conversion to satoshis and rounding to one decimal
+            amount_sats = int(round((float(pos_payment_obj.get('amount')) / float(btcpay_conversion_rate)) * 100000000))
             invoiced_info = {'conversion_rate': btcpay_conversion_rate,
-                             'invoiced_sat_amount': amount_sats}
+                             'invoiced_sat_amount': amount_sats,
+                             'crypto_amount': amount_sats / 100000000}
             return invoiced_info #return dictionary with results of both functions
         except Exception as e:
             raise UserError(_("Get Millisat amount: %s", e.args))
@@ -116,7 +117,10 @@ class PosPaymentMethod(models.Model):
                 "invoice": create_invoice_json.get('checkoutLink'),
                 "cryptopay_payment_link": create_invoice_json.get('checkoutLink'),
                 "cryptopay_payment_type": 'BTC',
-                "crypto_amt": invoiced_info['invoiced_sat_amount'],}
+                "crypto_amt": invoiced_info['crypto_amount'],
+                "crypto_rate": invoiced_info['conversion_rate'],
+                "conversion_rate": invoiced_info['conversion_rate'],
+                "requested_sat_amount": invoiced_info['invoiced_sat_amount'],}
             _logger.info(f"Completed BTCPay btcpay_create_crypto_invoice_payment_link. Passing back {inv_json}")
             return inv_json
         except Exception as e:
@@ -154,7 +158,10 @@ class PosPaymentMethod(models.Model):
                 "invoice": invoice,
                 "cryptopay_payment_link": cryptopay_payment_link,
                 "cryptopay_payment_type": 'BTC-' + self.btcpay_selected_crypto,
-                "crypto_amt": float(create_invoice_json.get('amount'))/1000, }
+                "crypto_amt": invoiced_info['crypto_amount'],
+                "crypto_rate": invoiced_info['conversion_rate'],
+                "conversion_rate": invoiced_info['conversion_rate'],
+                "requested_sat_amount": invoiced_info['invoiced_sat_amount'], }
             _logger.info(f"Completed BTCPay btcpay_create_crypto_invoice_direct_invoice. Passing back {inv_json}")
             return inv_json
         except Exception as e:
