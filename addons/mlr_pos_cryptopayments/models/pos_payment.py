@@ -32,6 +32,9 @@ class PosPayment(models.Model):
    requested_sat_amount = fields.Integer('Requested Sats')
    received_sat_amount = fields.Integer('Received Sats')
    provider_fee_sat = fields.Integer('Provider Fee Sats')
+   provider_status = fields.Char('Provider Status')
+   provider_completed_at = fields.Datetime('Provider Completed At')
+   provider_raw_json = fields.Text('Provider Raw JSON')
    cryptopay_payment_link = fields.Char('CryptoPay Payment Link')
    cryptopay_payment_link_qr_code = fields.Binary('QR Code', compute="_generate_qr") #binary field that is computed into a QR
 
@@ -50,6 +53,9 @@ class PosPayment(models.Model):
          'crypto_rate',
          'requested_sat_amount',
          'received_sat_amount',
+         'provider_status',
+         'provider_completed_at',
+         'provider_raw_json',
          'conversion_rate',
          'invoiced_crypto_amount',
       ))
@@ -102,6 +108,9 @@ class PosPayment(models.Model):
          'requested_sat_amount': payment.requested_sat_amount,
          'received_sat_amount': payment.received_sat_amount,
          'provider_fee_sat': payment.provider_fee_sat,
+         'provider_status': payment.provider_status,
+         'provider_completed_at': payment.provider_completed_at,
+         'provider_raw_json': payment.provider_raw_json,
          })
       return payment_fields
 

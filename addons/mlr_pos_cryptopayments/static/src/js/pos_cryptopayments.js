@@ -18,6 +18,9 @@ patch(PosPayment.prototype, {
         data.requested_sat_amount = this.requested_sat_amount;
         data.received_sat_amount = this.received_sat_amount;
         data.provider_fee_sat = this.provider_fee_sat;
+        data.provider_status = this.provider_status;
+        data.provider_completed_at = this.provider_completed_at;
+        data.provider_raw_json = this.provider_raw_json;
         data.cryptopay_payment_type = this.cryptopay_payment_type;
         data.cryptopay_payment_link = this.cryptopay_payment_link;
         return data;
@@ -39,6 +42,9 @@ patch(PosPayment.prototype, {
         this.requested_sat_amount = vals?.requested_sat_amount || false;
         this.received_sat_amount = vals?.received_sat_amount || false;
         this.provider_fee_sat = vals?.provider_fee_sat || false;
+        this.provider_status = vals?.provider_status || false;
+        this.provider_completed_at = vals?.provider_completed_at || false;
+        this.provider_raw_json = vals?.provider_raw_json || false;
         this.crypto_payment_status = vals?.crypto_payment_status || false;
 
         if (!this.cryptopay_payment_link_qr_code && this.cryptopay_payment_link && window.ZXing?.BrowserQRCodeSvgWriter) {

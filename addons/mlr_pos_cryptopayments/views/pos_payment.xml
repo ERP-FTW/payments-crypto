@@ -18,6 +18,9 @@
                     <field name="requested_sat_amount"/>
                     <field name="received_sat_amount"/>
                     <field name="provider_fee_sat"/>
+                    <field name="provider_status"/>
+                    <field name="provider_completed_at"/>
+                    <field name="provider_raw_json"/>
                     <field name="conversion_rate"/>
                     <field name="invoiced_crypto_amount"/>
                     <field name="cryptopay_payment_link"/>

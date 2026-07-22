@@ -31,6 +31,9 @@ class PosOrderInherit(models.Model):
             'requested_sat_amount',
             'received_sat_amount',
             'provider_fee_sat',
+            'provider_status',
+            'provider_completed_at',
+            'provider_raw_json',
             ]
 
 
@@ -55,6 +58,9 @@ class PosOrderInherit(models.Model):
                 'requested_sat_amount': ui_paymentline.get('requested_sat_amount'),
                 'received_sat_amount': ui_paymentline.get('received_sat_amount'),
                 'provider_fee_sat': ui_paymentline.get('provider_fee_sat'),
+                'provider_status': ui_paymentline.get('provider_status'),
+                'provider_completed_at': ui_paymentline.get('provider_completed_at'),
+                'provider_raw_json': ui_paymentline.get('provider_raw_json'),
             })
         return fields
 
