@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_crypto_user" model="res.groups">
+        <field name="name">Crypto User</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+    <record id="group_crypto_manager" model="res.groups">
+        <field name="name">Crypto Manager</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="implied_ids" eval="[(4, ref('crypto_base.group_crypto_user'))]"/>
+    </record>
+</odoo>

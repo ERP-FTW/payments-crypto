@@ -1,4 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_res_currency_inventory_report_user,res.currency.inventory.report.user,model_res_currency_inventory_report,account.group_account_user,1,0,0,0
-access_res_currency_gain_loss_report_user,res.currency.gain.loss.report.user,model_res_currency_gain_loss_report,account.group_account_user,1,0,0,0
-access_res_currency_reconciliation_report_user,res.currency.reconciliation.report.user,model_res_currency_reconciliation_report,account.group_account_user,1,0,0,0
