@@ -7,6 +7,9 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="company_id"/>
+                            <field name="environment"/>
+                            <field name="provider_uuid" readonly="1"/>
+                <field name="environment"/>
                 <field name="active"/>
             </list>
         </field>
@@ -16,7 +19,7 @@
         <field name="name">crypto.cashout.provider.form</field>
         <field name="model">crypto.cashout.provider</field>
         <field name="arch" type="xml">
-            <form string="Cashout Provider">
+            <form string="Crypto Transfer Provider">
                 <header>
                     <button
                         name="action_test_connection"
@@ -43,7 +46,7 @@
     </record>
 
     <record id="action_crypto_cashout_provider" model="ir.actions.act_window">
-        <field name="name">Cashout Providers</field>
+        <field name="name">Crypto Transfer Providers</field>
         <field name="res_model">crypto.cashout.provider</field>
         <field name="view_mode">list,form</field>
     </record>

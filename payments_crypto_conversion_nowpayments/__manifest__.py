@@ -1,7 +1,7 @@
 {
-    "name": "Payments Crypto Conversion - NowPayments",
-    "version": "18.0.1.0.0",
-    "summary": "NowPayments fiat payout adapter for crypto cashout",
+    "name": "NOWPayments Crypto Payouts",
+    "version": "18.0.2.0.0",
+    "summary": "Verified NOWPayments outbound crypto transfer adapter",
     "category": "Accounting",
     "author": "Miler",
     "license": "AGPL-3",

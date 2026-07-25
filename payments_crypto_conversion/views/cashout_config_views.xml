@@ -7,6 +7,7 @@
                 <field name="name"/>
                 <field name="company_id"/>
                 <field name="crypto_currency_id"/>
+                <field name="crypto_asset_id"/>
                 <field name="cashout_provider_id"/>
                 <field name="crypto_journal_id"/>
                 <field name="priority"/>
@@ -19,12 +20,13 @@
         <field name="name">crypto.cashout.config.form</field>
         <field name="model">crypto.cashout.config</field>
         <field name="arch" type="xml">
-            <form string="Cashout Configuration">
+            <form string="Crypto Transfer Configuration">
                 <sheet>
                     <group>
                         <group>
                             <field name="company_id"/>
                             <field name="crypto_currency_id"/>
+                            <field name="crypto_asset_id"/>
                             <field name="cashout_provider_id" domain="[('company_id', '=', company_id)]"/>
                             <field
                                 name="crypto_journal_id"
@@ -34,11 +36,7 @@
                             <field name="priority"/>
                             <field name="active"/>
                         </group>
-                        <group string="Fiat Settlement (TODO)">
-                            <field name="fiat_currency_id"/>
-                            <field name="bank_journal_id"/>
-                            <field name="clearing_account_id"/>
-                        </group>
+
                     </group>
                 </sheet>
             </form>
@@ -46,7 +44,7 @@
     </record>
 
     <record id="action_crypto_cashout_config" model="ir.actions.act_window">
-        <field name="name">Cashout Configurations</field>
+        <field name="name">Crypto Transfer Configurations</field>
         <field name="res_model">crypto.cashout.config</field>
         <field name="view_mode">list,form</field>
     </record>

@@ -115,9 +115,9 @@ class PaymentTransaction(models.Model):
 
         if payment_status in ("waiting", "confirming"):
             self._set_pending()
-        elif payment_status in ("finished", "confirmed", "sending"):
+        elif payment_status == "finished":
             self._set_done()
-            if self.account_payment_id and self.account_payment_id.state == "posted":
+            if self.account_payment_id and self.account_payment_id.move_id.state == "posted":
                 return
             try:
                 self._crypto_sync_accounting(notification_data)

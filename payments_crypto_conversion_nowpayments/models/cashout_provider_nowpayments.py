@@ -5,7 +5,6 @@ import requests
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_compare
 
 _logger = logging.getLogger(__name__)
 
@@ -14,24 +13,24 @@ class CryptoCashoutProvider(models.Model):
     _inherit = "crypto.cashout.provider"
 
     code = fields.Selection(
-        selection_add=[("nowpayments_fiat_payout", "NowPayments Fiat Payouts")], 
-        ondelete={"nowpayments_fiat_payout": "set default"},
+        selection_add=[("nowpayments_crypto_payout", "NOWPayments Crypto Payouts")],
+        ondelete={"nowpayments_crypto_payout": "set default"},
     )
 
     nowpayments_api_base_url = fields.Char(default="https://api.nowpayments.io/v1")
-    nowpayments_api_key = fields.Char(string="NowPayments API Key")
+    nowpayments_api_key = fields.Char(string="NOWPayments API Key", copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
     nowpayments_email = fields.Char(string="NowPayments Email")
-    nowpayments_password = fields.Char(string="NowPayments Password")
-    nowpayments_jwt_token = fields.Char(string="NowPayments JWT Token", copy=False)
+    nowpayments_password = fields.Char(string="NOWPayments Password", copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
+    nowpayments_jwt_token = fields.Char(string="NOWPayments JWT Token", copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
     nowpayments_token_updated_at = fields.Datetime(copy=False)
     nowpayments_timeout = fields.Integer(default=30)
 
     def _ensure_nowpayments_provider(self):
         self.ensure_one()
-        if self.code != "nowpayments_fiat_payout":
+        if self.code != "nowpayments_crypto_payout":
             raise UserError(
                 _(
-                    "Provider %(provider)s is not configured for NowPayments fiat payouts."
+                    "Provider %(provider)s is not configured for NOWPayments crypto payouts."
                 )
                 % {"provider": self.display_name}
             )
@@ -58,8 +57,9 @@ class CryptoCashoutProvider(models.Model):
         normalized_path = path if path.startswith("/") else f"/{path}"
         url = f"{base_url}{normalized_path}"
         headers = {"Content-Type": "application/json"}
-        if self.nowpayments_api_key:
-            headers["x-api-key"] = self.nowpayments_api_key
+        api_key = self._credential("nowpayments_api_key", "api_key_env_var")
+        if api_key:
+            headers["x-api-key"] = api_key
         if self.nowpayments_jwt_token and not skip_auth:
             headers["Authorization"] = f"Bearer {self.nowpayments_jwt_token}"
         timeout = self.nowpayments_timeout or 30
@@ -72,14 +72,14 @@ class CryptoCashoutProvider(models.Model):
                 headers=headers,
                 timeout=timeout,
             )
+        except requests.Timeout as exc:
+            _logger.warning("NOWPayments request timed out provider=%s path=%s", self.code, normalized_path)
+            raise TimeoutError("NOWPayments submission response was not received") from exc
         except requests.RequestException as exc:
-            _logger.exception("NowPayments request failed: %s %s", method, url)
-            raise UserError(
-                _("NowPayments request failed: %(error)s") % {"error": str(exc)}
-            ) from exc
+            _logger.warning("NOWPayments request failed provider=%s path=%s", self.code, normalized_path)
+            raise UserError(_("NOWPayments request failed; review the sanitized server log.")) from exc
 
         if not response.ok:
-            message = response.text or _("No response body provided.")
             raise UserError(
                 _(
                     "NowPayments API error %(status)s on %(path)s: %(message)s"
@@ -87,7 +87,7 @@ class CryptoCashoutProvider(models.Model):
                 % {
                     "status": response.status_code,
                     "path": normalized_path,
-                    "message": message,
+                    "message": _("Provider rejected the request; response details were withheld."),
                 }
             )
         try:
@@ -140,6 +140,7 @@ class CryptoCashoutProvider(models.Model):
                 "address": withdrawal.address,
                 "currency": currency_code,
                 "amount": withdrawal.amount,
+                "unique_external_id": withdrawal.external_idempotency_key,
             }
             if withdrawal.extra_id:
                 entry["extra_id"] = withdrawal.extra_id
@@ -182,6 +183,7 @@ class CryptoCashoutProvider(models.Model):
             "address": data.get("address") or False,
             "extra_id": data.get("extra_id") or data.get("extraId"),
             "provider_withdrawal_id": str(data.get("id")) if data.get("id") else False,
+            "provider_transfer_id": str(data.get("id")) if data.get("id") else False,
             "batch_withdrawal_id": data.get("batchWithdrawalId") or data.get("batch_withdrawal_id"),
             "status": data.get("status"),
             "tx_hash": data.get("hash") or data.get("txHash"),
@@ -205,7 +207,11 @@ class CryptoCashoutProvider(models.Model):
         self.ensure_one()
         self._ensure_nowpayments_provider()
         payout._ensure_withdrawals_currency()
-        payload = {"withdrawals": self._nowpayments_prepare_withdrawals_payload(payout)}
+        base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url").rstrip("/")
+        payload = {
+            "withdrawals": self._nowpayments_prepare_withdrawals_payload(payout),
+            "ipn_callback_url": f"{base_url}/payment/nowpayments/ipn/{self.provider_uuid}",
+        }
         response = self._nowpayments_request("POST", "/payout", json=payload)
         provider_payout_id = response.get("id") or response.get("payout_id")
         if not provider_payout_id:
@@ -214,10 +220,11 @@ class CryptoCashoutProvider(models.Model):
         payout.write(
             {
                 "provider_payout_id": str(provider_payout_id),
+                "provider_batch_id": str(provider_payout_id),
                 "requested_at": payout.requested_at or now,
                 "created_at": payout.created_at or now,
                 "updated_at": now,
-                "state": "processing",
+                "state": "submitted",
             }
         )
         withdrawals_data = response.get("withdrawals") or []
@@ -231,18 +238,11 @@ class CryptoCashoutProvider(models.Model):
         if not statuses:
             return "processing"
         failed_statuses = {"failed", "error", "rejected"}
-        done_statuses = {
-            "finished",
-            "confirmed",
-            "success",
-            "sent",
-            "done",
-            "completed",
-        }
+        done_statuses = {"finished"}
         if statuses & failed_statuses:
             return "failed"
         if statuses.issubset(done_statuses):
-            return "done"
+            return "executed"
         return "processing"
 
     def provider_get_payout(self, payout):
