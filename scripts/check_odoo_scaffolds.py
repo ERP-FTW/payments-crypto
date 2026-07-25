@@ -8,7 +8,6 @@ from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
-ADDONS = Path("addons")
 EXPECTED = {
     "crypto_base": ["base"],
     "account_crypto": ["account", "crypto_base"],
@@ -44,15 +43,17 @@ def load_manifest(path: Path) -> dict:
     return ast.literal_eval(path.read_text())
 
 
-def main() -> int:
+def validate_repository(root: Path) -> list[str]:
+    """Return actionable scaffold validation failures for ``root``."""
     failures: list[str] = []
-    manifests = sorted(Path(".").glob("**/__manifest__.py"))
+    addons = root / "addons"
+    manifests = sorted(root.glob("**/__manifest__.py"))
     technical_names = [p.parent.name for p in manifests]
     duplicates = sorted({name for name in technical_names if technical_names.count(name) > 1})
     if duplicates:
         failures.append(f"duplicate technical module names: {', '.join(duplicates)}")
 
-    active = {p.parent.name: p for p in ADDONS.glob("*/__manifest__.py")}
+    active = {p.parent.name: p for p in addons.glob("*/__manifest__.py")}
     missing = sorted(set(EXPECTED) - set(active))
     if missing:
         failures.append(f"missing expected addons: {', '.join(missing)}")
@@ -60,7 +61,11 @@ def main() -> int:
     if obsolete_active:
         failures.append(f"obsolete addons still active: {', '.join(obsolete_active)}")
 
-    root_obsolete = sorted(p.parent.name for p in Path(".").glob("*/__manifest__.py") if p.parent.name in OBSOLETE)
+    root_obsolete = sorted(
+        p.parent.name
+        for p in root.glob("*/__manifest__.py")
+        if p.parent.name in OBSOLETE
+    )
     if root_obsolete:
         failures.append(f"obsolete duplicate root addons still present: {', '.join(root_obsolete)}")
 
@@ -94,6 +99,11 @@ def main() -> int:
             if bad:
                 failures.append(f"{module}: forbidden provider dependencies: {', '.join(bad)}")
 
+    return failures
+
+
+def main() -> int:
+    failures = validate_repository(Path.cwd())
     if failures:
         print("Scaffold check failed:")
         for failure in failures:
