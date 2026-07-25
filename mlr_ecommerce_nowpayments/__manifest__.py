@@ -1,10 +1,10 @@
 {
     "name": "MLR Ecommerce Now Payments",
-    "summary": "MLR Ecommerce Now Payments",
+    "summary": "NOWPayments crypto payment acceptance and outbound payouts",
     "author": "MLR - MI Lightning Rod",
     "website": "https://www.milightningrod.com",
     "category": "Ecommerce",
-    "version": "18.0",
+    "version": "18.0.2.0.0",
     "depends": ["website", "mlr_ecommerce_cryptopayments"],
     "images": ["static/description/icon.png"],
     "data": [
@@ -13,6 +13,7 @@
         "data/now_payment_method_data.xml",
         "data/now_payment_provider_data.xml",
         "views/now_payment_provider.xml",
+        "views/crypto_transfer_provider_views.xml",
     ],
     "installable": True,
     "application": False,

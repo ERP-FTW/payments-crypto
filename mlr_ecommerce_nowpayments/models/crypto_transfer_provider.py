@@ -9,8 +9,8 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 
-class CryptoCashoutProvider(models.Model):
-    _inherit = "crypto.cashout.provider"
+class NOWPaymentsCryptoTransferProvider(models.Model):
+    _inherit = "crypto.transfer.provider"
 
     code = fields.Selection(
         selection_add=[("nowpayments_crypto_payout", "NOWPayments Crypto Payouts")],
@@ -18,10 +18,10 @@ class CryptoCashoutProvider(models.Model):
     )
 
     nowpayments_api_base_url = fields.Char(default="https://api.nowpayments.io/v1")
-    nowpayments_api_key = fields.Char(string="NOWPayments API Key", copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
+    nowpayments_api_key = fields.Char(string="NOWPayments API Key", copy=False, groups="account_cryptocurrency.group_crypto_transfer_admin")
     nowpayments_email = fields.Char(string="NowPayments Email")
-    nowpayments_password = fields.Char(string="NOWPayments Password", copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    nowpayments_jwt_token = fields.Char(string="NOWPayments JWT Token", copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
+    nowpayments_password = fields.Char(string="NOWPayments Password", copy=False, groups="account_cryptocurrency.group_crypto_transfer_admin")
+    nowpayments_jwt_token = fields.Char(string="NOWPayments JWT Token", copy=False, groups="account_cryptocurrency.group_crypto_transfer_admin")
     nowpayments_token_updated_at = fields.Datetime(copy=False)
     nowpayments_timeout = fields.Integer(default=30)
 
@@ -128,7 +128,7 @@ class CryptoCashoutProvider(models.Model):
 
     def _nowpayments_prepare_withdrawals_payload(self, payout):
         withdrawals_payload = []
-        for withdrawal in payout.withdrawal_ids:
+        for withdrawal in payout.line_ids:
             if not withdrawal.address:
                 raise UserError(_("Withdrawal address is required."))
             if withdrawal.amount <= 0:
@@ -152,7 +152,7 @@ class CryptoCashoutProvider(models.Model):
     def _nowpayments_find_withdrawal_line(self, payout, data):
         provider_id = data.get("id")
         if provider_id:
-            match = payout.withdrawal_ids.filtered(
+            match = payout.line_ids.filtered(
                 lambda w: w.provider_withdrawal_id == str(provider_id)
             )
             if match:
@@ -162,7 +162,7 @@ class CryptoCashoutProvider(models.Model):
         amount = data.get("amount")
         if address and currency_code and amount is not None:
             rounding = payout.crypto_currency_id.rounding or 0.00000001
-            for line in payout.withdrawal_ids:
+            for line in payout.line_ids:
                 if line.address != address:
                     continue
                 if (line.currency_code or "").upper() != currency_code:
@@ -170,13 +170,13 @@ class CryptoCashoutProvider(models.Model):
                 if float_compare(line.amount, amount, precision_rounding=rounding) != 0:
                     continue
                 return line
-        return payout.withdrawal_ids[:0]
+        return payout.line_ids[:0]
 
     def _nowpayments_prepare_withdrawal_vals(self, payout, data):
         currency_code = (data.get("currency") or payout.crypto_currency_id.name or "").upper()
         currency = payout.crypto_currency_id
         return {
-            "payout_id": payout.id,
+            "transfer_id": payout.id,
             "currency_code": currency_code,
             "currency_id": currency.id if currency else False,
             "amount": data.get("amount") or 0.0,
@@ -194,7 +194,7 @@ class CryptoCashoutProvider(models.Model):
         }
 
     def _nowpayments_upsert_withdrawals(self, payout, withdrawals_data):
-        withdrawal_model = self.env["crypto.cashout.withdrawal"]
+        withdrawal_model = self.env["crypto.transfer.line"]
         for data in withdrawals_data:
             line = self._nowpayments_find_withdrawal_line(payout, data)
             vals = self._nowpayments_prepare_withdrawal_vals(payout, data)
@@ -203,7 +203,7 @@ class CryptoCashoutProvider(models.Model):
             else:
                 withdrawal_model.create(vals)
 
-    def provider_create_payout(self, payout):
+    def provider_submit_transfer(self, payout):
         self.ensure_one()
         self._ensure_nowpayments_provider()
         payout._ensure_withdrawals_currency()
@@ -213,14 +213,14 @@ class CryptoCashoutProvider(models.Model):
             "ipn_callback_url": f"{base_url}/payment/nowpayments/ipn/{self.provider_uuid}",
         }
         response = self._nowpayments_request("POST", "/payout", json=payload)
-        provider_payout_id = response.get("id") or response.get("payout_id")
-        if not provider_payout_id:
+        provider_request_id = response.get("id") or response.get("payout_id")
+        if not provider_request_id:
             raise UserError(_("NowPayments did not return a payout ID."))
         now = fields.Datetime.now()
         payout.write(
             {
-                "provider_payout_id": str(provider_payout_id),
-                "provider_batch_id": str(provider_payout_id),
+                "provider_request_id": str(provider_request_id),
+                "provider_batch_id": str(provider_request_id),
                 "requested_at": payout.requested_at or now,
                 "created_at": payout.created_at or now,
                 "updated_at": now,
@@ -233,7 +233,7 @@ class CryptoCashoutProvider(models.Model):
         return True
 
     def _nowpayments_compute_payout_state(self, payout):
-        statuses = {((line.status or "").lower()) for line in payout.withdrawal_ids}
+        statuses = {((line.status or "").lower()) for line in payout.line_ids}
         statuses.discard("")
         if not statuses:
             return "processing"
@@ -245,13 +245,13 @@ class CryptoCashoutProvider(models.Model):
             return "executed"
         return "processing"
 
-    def provider_get_payout(self, payout):
+    def provider_get_transfer(self, payout):
         self.ensure_one()
         self._ensure_nowpayments_provider()
-        if not payout.provider_payout_id:
+        if not payout.provider_request_id:
             raise UserError(_("Provider payout ID is required to refresh the payout."))
         response = self._nowpayments_request(
-            "GET", f"/payout/{payout.provider_payout_id}"
+            "GET", f"/payout/{payout.provider_request_id}"
         )
         now = fields.Datetime.now()
         payout_vals = {

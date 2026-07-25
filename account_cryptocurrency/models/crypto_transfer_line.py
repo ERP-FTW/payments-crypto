@@ -3,13 +3,13 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
-class CryptoCashoutWithdrawal(models.Model):
-    _name = "crypto.cashout.withdrawal"
+class CryptoTransferLine(models.Model):
+    _name = "crypto.transfer.line"
     _description = "Crypto Transfer Line"
     _order = "id"
 
-    payout_id = fields.Many2one(
-        "crypto.cashout.payout",
+    transfer_id = fields.Many2one(
+        "crypto.transfer",
         required=True,
         ondelete="cascade",
         index=True,
@@ -87,7 +87,7 @@ class CryptoCashoutWithdrawal(models.Model):
         return super().write(vals)
 
     _sql_constraints = [
-        ("line_provider_idempotency_uniq", "unique(payout_id, external_idempotency_key)", "Transfer line idempotency keys must be unique."),
+        ("line_provider_idempotency_uniq", "unique(transfer_id, external_idempotency_key)", "Transfer line idempotency keys must be unique."),
         ("line_provider_transfer_uniq", "unique(provider_transfer_id)", "The provider transfer ID is already linked."),
     ]
 
@@ -97,10 +97,10 @@ class CryptoCashoutWithdrawal(models.Model):
             if rec.amount <= 0:
                 raise ValidationError(_("Withdrawal amount must be strictly positive."))
 
-    @api.constrains("currency_code", "currency_id", "payout_id")
+    @api.constrains("currency_code", "currency_id", "transfer_id")
     def _check_currency_matches_payout(self):
-        for rec in self.filtered("payout_id"):
-            payout_currency = rec.payout_id.crypto_currency_id
+        for rec in self.filtered("transfer_id"):
+            payout_currency = rec.transfer_id.crypto_currency_id
             if not payout_currency:
                 continue
             expected_code = self._normalize_currency_code(payout_currency.name)

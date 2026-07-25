@@ -5,3 +5,9 @@ from . import res_currency_move_line
 from . import account_move
 from . import account_account
 from . import account_bank_statement
+from . import crypto_ledger
+from . import accounting_settlement
+from . import crypto_transfer_provider
+from . import crypto_transfer_config
+from . import crypto_transfer
+from . import crypto_transfer_line

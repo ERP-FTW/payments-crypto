@@ -11,8 +11,8 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 
-class CryptoCashoutProvider(models.Model):
-    _name = "crypto.cashout.provider"
+class CryptoTransferProvider(models.Model):
+    _name = "crypto.transfer.provider"
     _description = "Crypto Transfer Provider"
     _order = "name"
 
@@ -31,15 +31,15 @@ class CryptoCashoutProvider(models.Model):
     )
     environment = fields.Selection([("mock", "Mock"), ("test", "Test"), ("live", "Live")], required=True, default="mock")
     provider_uuid = fields.Char(required=True, readonly=True, copy=False, index=True, default=lambda self: str(uuid.uuid4()))
-    ipn_secret = fields.Char(copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
+    ipn_secret = fields.Char(copy=False, groups="account_cryptocurrency.group_crypto_transfer_admin")
     credential_source = fields.Selection([("database", "Database"), ("environment", "Environment Variable")], required=True, default="database")
-    api_key_env_var = fields.Char(groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    password_env_var = fields.Char(groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    ipn_secret_env_var = fields.Char(groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    mock_scenario = fields.Selection([("immediate_success", "Immediate Success"), ("delayed_success", "Delayed Success"), ("failure", "Failure"), ("partial_success", "Partial Success"), ("submission_timeout", "Submission Timeout")], default="delayed_success", groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    mock_delay_seconds = fields.Integer(default=0, groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    mock_fixed_rate = fields.Char(default="50000.00", groups="payments_crypto_conversion.group_crypto_transfer_admin")
-    mock_ipn_secret = fields.Char(copy=False, groups="payments_crypto_conversion.group_crypto_transfer_admin")
+    api_key_env_var = fields.Char(groups="account_cryptocurrency.group_crypto_transfer_admin")
+    password_env_var = fields.Char(groups="account_cryptocurrency.group_crypto_transfer_admin")
+    ipn_secret_env_var = fields.Char(groups="account_cryptocurrency.group_crypto_transfer_admin")
+    mock_scenario = fields.Selection([("immediate_success", "Immediate Success"), ("delayed_success", "Delayed Success"), ("failure", "Failure"), ("partial_success", "Partial Success"), ("submission_timeout", "Submission Timeout")], default="delayed_success", groups="account_cryptocurrency.group_crypto_transfer_admin")
+    mock_delay_seconds = fields.Integer(default=0, groups="account_cryptocurrency.group_crypto_transfer_admin")
+    mock_fixed_rate = fields.Char(default="50000.00", groups="account_cryptocurrency.group_crypto_transfer_admin")
+    mock_ipn_secret = fields.Char(copy=False, groups="account_cryptocurrency.group_crypto_transfer_admin")
     active = fields.Boolean(default=True)
     notes = fields.Text()
 
@@ -79,14 +79,14 @@ class CryptoCashoutProvider(models.Model):
             % self.display_name
         )
 
-    def provider_create_payout(self, payout):
+    def provider_submit_transfer(self, payout):
         self.ensure_one()
         if not payout:
-            raise UserError(_("A payout record is required."))
+            raise UserError(_("A transfer record is required."))
         if self.code == "mock_crypto" and self.environment == "mock":
             return self.provider_create_mock_payout(payout)
         _logger.warning(
-            "Provider %s does not implement payout creation for payout %s",
+            "Provider %s does not implement payout creation for transfer %s",
             self.display_name,
             payout.display_name,
         )
@@ -121,7 +121,7 @@ class CryptoCashoutProvider(models.Model):
             "provider_id": self.id,
             "event_type": str(payload.get("event_type") or payload.get("payment_status") or payload.get("status") or "provider_ipn"),
             "provider_event_id": str(payload.get("event_id")) if payload.get("event_id") else False,
-            "provider_object_id": str(payload.get("payment_id") or payload.get("payout_id") or payload.get("id") or ""),
+            "provider_object_id": str(payload.get("payment_id") or payload.get("payout_id") or payload.get("transfer_id") or payload.get("id") or ""),
             "payload_hash": digest,
             "raw_payload": canonical,
             "signature": signature,
@@ -132,9 +132,9 @@ class CryptoCashoutProvider(models.Model):
         event = self.env["crypto.provider.event"].sudo().create(event_vals)
         if not verified:
             return event, False
-        transfer = self.env["crypto.cashout.payout"].sudo().search([
-            ("cashout_provider_id", "=", self.id),
-            "|", ("provider_batch_id", "=", event.provider_object_id), ("provider_payout_id", "=", event.provider_object_id),
+        transfer = self.env["crypto.transfer"].sudo().search([
+            ("provider_id", "=", self.id),
+            "|", ("provider_batch_id", "=", event.provider_object_id), ("provider_request_id", "=", event.provider_object_id),
         ], limit=1)
         status = str(payload.get("status") or payload.get("payment_status") or "").lower()
         successful = status == "finished"
@@ -147,9 +147,9 @@ class CryptoCashoutProvider(models.Model):
             for item in items:
                 item_status = str(item.get("status") or status).lower()
                 provider_transfer = str(item.get("id") or item.get("transfer_id") or "")
-                line = transfer.withdrawal_ids.filtered(lambda l: l.provider_transfer_id == provider_transfer or l.external_idempotency_key == item.get("unique_external_id"))[:1]
-                if not line and len(transfer.withdrawal_ids) == 1:
-                    line = transfer.withdrawal_ids
+                line = transfer.line_ids.filtered(lambda l: l.provider_transfer_id == provider_transfer or l.external_idempotency_key == item.get("unique_external_id"))[:1]
+                if not line and len(transfer.line_ids) == 1:
+                    line = transfer.line_ids
                 if item_status != "finished" or not line:
                     continue
                 atomic = normalize_atomic(item.get("atomic_amount") or line.atomic_amount)
@@ -165,7 +165,7 @@ class CryptoCashoutProvider(models.Model):
                     })
                 confirmed += 1
             if successful:
-                transfer.sudo().write({"state": "executed" if confirmed == len(transfer.withdrawal_ids) else "partially_executed"})
+                transfer.sudo().write({"state": "executed" if confirmed == len(transfer.line_ids) else "partially_executed"})
             elif failed:
                 transfer.sudo().write({"state": "failed"})
             else:
@@ -175,16 +175,16 @@ class CryptoCashoutProvider(models.Model):
 
     def _mock_payload(self, payout, status):
         self.ensure_one()
-        return {"event_id": f"MOCK-EVENT-{payout.external_idempotency_key}-{status}", "payout_id": payout.provider_batch_id, "status": status,
-                "withdrawals": [{"id": line.provider_transfer_id, "unique_external_id": line.external_idempotency_key, "status": status, "atomic_amount": line.atomic_amount, "finished_at": fields.Datetime.to_string(fields.Datetime.now())} for line in payout.withdrawal_ids]}
+        return {"event_id": f"MOCK-EVENT-{payout.external_idempotency_key}-{status}", "transfer_id": payout.provider_batch_id, "status": status,
+                "withdrawals": [{"id": line.provider_transfer_id, "unique_external_id": line.external_idempotency_key, "status": status, "atomic_amount": line.atomic_amount, "finished_at": fields.Datetime.to_string(fields.Datetime.now())} for line in payout.line_ids]}
 
     def provider_create_mock_payout(self, payout):
         self.ensure_one()
         if self.environment != "mock" or self.code != "mock_crypto":
             raise UserError(_("Mock controls cannot be used with a test or live provider."))
         batch = f"MOCK-BATCH-{payout.external_idempotency_key}"
-        payout.write({"provider_batch_id": batch, "provider_payout_id": batch, "state": "submitted"})
-        for line in payout.withdrawal_ids:
+        payout.write({"provider_batch_id": batch, "provider_request_id": batch, "state": "submitted"})
+        for line in payout.line_ids:
             line.write({"provider_transfer_id": f"MOCK-TRANSFER-{line.external_idempotency_key}"})
         if self.mock_scenario == "submission_timeout":
             raise TimeoutError("Mock response intentionally lost")
@@ -199,17 +199,17 @@ class CryptoCashoutProvider(models.Model):
         payload = self._mock_payload(payout, status)
         return self.process_signed_ipn(payload, self._sign_ipn(payload))[0]
 
-    def provider_get_payout(self, payout):
+    def provider_get_transfer(self, payout):
         self.ensure_one()
         if not payout:
-            raise UserError(_("A payout record is required."))
+            raise UserError(_("A transfer record is required."))
         _logger.warning(
-            "Provider %s does not implement payout refresh for payout %s",
+            "Provider %s does not implement payout refresh for transfer %s",
             self.display_name,
             payout.display_name,
         )
         raise UserError(
-            _("Provider '%s' does not implement payout status refresh.")
+            _("Provider '%s' does not implement transfer status refresh.")
             % self.display_name
         )
 

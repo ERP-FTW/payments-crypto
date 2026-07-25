@@ -1,0 +1,10 @@
+<odoo>
+  <menuitem id="menu_crypto_root" name="Crypto" parent="account.menu_finance_entries" sequence="65" groups="account_cryptocurrency.group_crypto_transfer_viewer"/>
+  <menuitem id="menu_crypto_asset" name="Crypto Assets" parent="menu_crypto_root" action="action_crypto_asset" sequence="10"/>
+  <menuitem id="menu_crypto_event" name="Provider Events" parent="menu_crypto_root" action="action_crypto_event" sequence="20"/>
+  <menuitem id="menu_crypto_snapshot" name="Rate Snapshots" parent="menu_crypto_root" action="action_crypto_snapshot" sequence="30"/>
+  <menuitem id="menu_crypto_settlement" name="Settlements" parent="menu_crypto_root" action="action_crypto_settlement" sequence="40"/>
+  <menuitem id="menu_crypto_transfer" name="Crypto Transfers" parent="menu_crypto_root" action="action_crypto_transfer" sequence="50"/>
+  <menuitem id="menu_crypto_transfer_provider" name="Transfer Providers" parent="menu_crypto_root" action="action_crypto_transfer_provider" sequence="60" groups="account_cryptocurrency.group_crypto_transfer_admin"/>
+  <menuitem id="menu_crypto_transfer_config" name="Transfer Configurations" parent="menu_crypto_root" action="action_crypto_transfer_config" sequence="70" groups="account_cryptocurrency.group_crypto_transfer_admin"/>
+</odoo>

@@ -8,7 +8,7 @@ from werkzeug.wrappers import Response
 class NOWPaymentsIPNController(http.Controller):
     @http.route("/payment/nowpayments/ipn/<string:provider_uuid>", type="http", auth="public", methods=["POST"], csrf=False)
     def nowpayments_ipn(self, provider_uuid, **kwargs):
-        provider = request.env["crypto.cashout.provider"].sudo().search([("provider_uuid", "=", provider_uuid), ("active", "=", True)], limit=1)
+        provider = request.env["crypto.transfer.provider"].sudo().search([("provider_uuid", "=", provider_uuid), ("active", "=", True)], limit=1)
         if not provider:
             return Response("Unknown or inactive provider", status=404)
         signature = request.httprequest.headers.get("x-nowpayments-sig")

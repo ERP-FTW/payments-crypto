@@ -1,8 +1,8 @@
 <odoo>
-    <record id="view_crypto_cashout_provider_form_nowpayments" model="ir.ui.view">
-        <field name="name">crypto.cashout.provider.form.nowpayments</field>
-        <field name="model">crypto.cashout.provider</field>
-        <field name="inherit_id" ref="payments_crypto_conversion.view_crypto_cashout_provider_form"/>
+    <record id="view_crypto_transfer_provider_form_nowpayments" model="ir.ui.view">
+        <field name="name">crypto.transfer.provider.form.nowpayments</field>
+        <field name="model">crypto.transfer.provider</field>
+        <field name="inherit_id" ref="account_cryptocurrency.view_crypto_transfer_provider_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/group" position="inside">
                 <group string="NOWPayments" invisible="code != 'nowpayments_crypto_payout'">

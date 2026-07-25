@@ -149,3 +149,10 @@ promote its widespread use.
 This module is part of the `OCA/currency <https://github.com/OCA/currency/tree/14.0/account_cryptocurrency>`_ project on GitHub.
 
 You are welcome to contribute. To learn how please visit https://odoo-community.org/page/Contribute.
+
+Crypto settlement ledger
+------------------------
+
+The addon also provides the provider-neutral crypto settlement ledger and
+transfer orchestration described in ``readme/LEDGER.rst``. Provider-specific API
+and IPN behavior belongs in separate provider addons.

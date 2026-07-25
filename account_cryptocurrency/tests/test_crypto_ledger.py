@@ -9,7 +9,7 @@ class TestCryptoLedger(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.asset = cls.env["crypto.asset"].create({"name": "Bitcoin", "symbol": "btc", "network_code": "bitcoin", "is_native_asset": True, "decimal_places": 8})
-        cls.provider = cls.env["crypto.cashout.provider"].create({"name": "Mock", "code": "mock_crypto", "environment": "mock", "mock_ipn_secret": "test-secret"})
+        cls.provider = cls.env["crypto.transfer.provider"].create({"name": "Mock", "code": "mock_crypto", "environment": "mock", "mock_ipn_secret": "test-secret"})
 
     def test_atomic_normalization_and_rejection(self):
         self.assertEqual(normalize_atomic("000200000"), "200000")
