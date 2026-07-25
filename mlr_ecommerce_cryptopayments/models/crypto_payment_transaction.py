@@ -83,7 +83,7 @@ class PaymentTransaction(models.Model):
         if self.state != "done" or not self._crypto_is_relevant():
             return False
         return not (
-            self.account_payment_id and self.account_payment_id.state == "posted"
+            self.account_payment_id and self.account_payment_id.move_id.state == "posted"
         )
 
     def _crypto_get_notification_date(self, notification_data=None):
@@ -216,7 +216,7 @@ class PaymentTransaction(models.Model):
         payment = self.account_payment_id
         if not payment:
             return False
-        if payment.state != "posted":
+        if payment.move_id.state != "posted":
             payment.with_company(self.company_id).action_post()
         return payment
 

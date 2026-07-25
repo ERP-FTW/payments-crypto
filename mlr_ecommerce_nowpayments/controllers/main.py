@@ -170,37 +170,7 @@ class NowPaymentsController(Controller):
         return request.redirect("/payment/status")
 
     @route(_return_url, type="http", auth="public", methods=["GET", "POST"], csrf=False)
-    def custom_process_transaction(self, **post):
-        _logger.info("Handling NowPayments return with data: %s", post)
-
-        ref = post.get("ref") or post.get("reference")
-        if not ref:
-            _logger.warning("NowPayments return missing reference: %s", post)
-            return request.redirect("/payment/status")
-
-        tx_sudo = request.env["payment.transaction"].sudo()._get_tx_from_notification_data(
-            "now", {"order_id": ref}
-        )
-
-        api_response = self.nowApiCall(
-            {},
-            "/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc",
-            "GET",
-            jwt=1,
-        )
-        if not api_response.ok:
-            _logger.warning(
-                "Failed to fetch NowPayments payments: %s", api_response.text
-            )
-            return request.redirect("/payment/status")
-
-        payments = api_response.json().get("data", [])
-        payment = self._now_find_payment(tx_sudo, payments)
-        if not payment:
-            _logger.info("No NowPayments payment found for reference %s", ref)
-            return request.redirect("/payment/status")
-
-        notification_data = self._now_build_notification_data(payment, tx_sudo)
-        tx_sudo._handle_notification_data("now", notification_data)
-        _logger.info("Processed NowPayments transaction for ref %s", ref)
+    def now_return_from_checkout(self, **post):
+        # A browser redirect is user-controlled and is never settlement evidence.
+        # Verified provider notifications alone advance transaction/accounting state.
         return request.redirect("/payment/status")

@@ -1,7 +1,7 @@
 <odoo noupdate="1">
-    <record id="seq_crypto_cashout_payout" model="ir.sequence">
-        <field name="name">Crypto Cashout Payout</field>
-        <field name="code">crypto.cashout.payout</field>
+    <record id="seq_crypto_transfer" model="ir.sequence">
+        <field name="name">Crypto Transfer</field>
+        <field name="code">crypto.transfer</field>
         <field name="prefix">CCP/%(year)s/</field>
         <field name="padding">5</field>
         <field name="company_id" eval="False"/>
