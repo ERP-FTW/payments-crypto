@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_crypto_root" name="Crypto" sequence="80" groups="crypto_base.group_crypto_user"/>
+</odoo>
