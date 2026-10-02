@@ -11,6 +11,13 @@ _logger = logging.getLogger(__name__)
 NOWPAYMENTS_TIMEOUT = 20
 
 
+class NowPaymentsUnavailable(ValidationError):
+    """NOWPayments could not be reached or answered with a temporary error (429 or 5xx).
+
+    The same request may succeed later, unlike the other ValidationErrors of this module.
+    """
+
+
 class PaymentProvider(models.Model):
     _inherit = 'payment.provider'
 
@@ -46,7 +53,8 @@ class PaymentProvider(models.Model):
         logged, never headers, and never the body of the authentication call.
 
         :return: The decoded JSON response.
-        :raise ValidationError: On a transport error or a non-2xx answer.
+        :raise NowPaymentsUnavailable: On a transport error, HTTP 429 or a 5xx answer.
+        :raise ValidationError: On any other non-2xx answer.
         """
         self.ensure_one()
         url = f"{self._nowpayments_api_base()}{endpoint}"
@@ -64,7 +72,7 @@ class PaymentProvider(models.Model):
             )
         except requests.exceptions.RequestException as error:
             _logger.warning("NOWPayments %s %s failed: %s", method, endpoint, type(error).__name__)
-            raise ValidationError(_("NOWPayments: could not reach the provider.")) from error
+            raise NowPaymentsUnavailable(_("NOWPayments: could not reach the provider.")) from error
         _logger.info("NOWPayments %s %s -> HTTP %s", method, endpoint, response.status_code)
         try:
             content = response.json()
@@ -72,7 +80,11 @@ class PaymentProvider(models.Model):
             content = {}
         if not 200 <= response.status_code < 300:
             message = content.get('message') if isinstance(content, dict) else None
-            raise ValidationError(_(
+            error_class = (
+                NowPaymentsUnavailable if response.status_code == 429 or response.status_code >= 500
+                else ValidationError
+            )
+            raise error_class(_(
                 "NOWPayments: %(endpoint)s answered HTTP %(status)s%(detail)s",
                 endpoint=endpoint, status=response.status_code,
                 detail=f" ({message})" if message else '',

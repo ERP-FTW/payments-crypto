@@ -23,12 +23,17 @@ sandbox payment before go-live (see *Before go-live*).
    `ipn_callback_url` = `<base>/payment/now/ipn`, `success_url` and `cancel_url` =
    `<base>/payment/now/return?ref=<reference>`. The invoice id and URL are stored on the
    transaction (`crypto_invoice_id`, `crypto_payment_link`); a resubmitted checkout reuses them.
+   Invoice creation holds a row lock on the transaction, so two overlapping submissions of the
+   same checkout cannot each open an invoice: the second waits, is retried by Odoo, and reuses the
+   first one's invoice.
 3. The buyer pays on NOWPayments. Odoo learns the outcome by any of three paths, all of which
    re-read the payment from NOWPayments with the transaction's own provider credentials and apply
    the same checks:
    - **IPN** (`POST /payment/now/ipn`): the `x-nowpayments-sig` header must be the HMAC-SHA512 of
      the key-sorted JSON body with the provider's IPN secret. The body only names the payment;
-     its state is fetched with `GET /v1/payment/{payment_id}`.
+     its state is fetched with `GET /v1/payment/{payment_id}`. If that call cannot reach
+     NOWPayments or gets HTTP 429/5xx, the notification is answered **503**, not acknowledged, so
+     it can be sent again; any other refusal is acknowledged (resending cannot change it).
    - **Return page** (`/payment/now/return`): when the buyer comes back.
    - **Reconciliation job** (*NOWPayments: reconcile open transactions*, every 15 minutes): for
      draft/pending NOWPayments transactions up to 8 days old, lists the payments of the
@@ -95,7 +100,9 @@ whose public URL NOWPayments can reach:
    reconciliation job.
 3. Let one invoice expire. Expect the transaction cancelled and the order unconfirmed.
 4. Confirm from a real IPN that the signature check accepts it (the HMAC procedure is reproduced
-   from NOWPayments' reference code; a refusal shows as *refused (signature)* in the log).
+   from NOWPayments' reference code; a refusal shows as *refused (signature)* in the log), and
+   whether NOWPayments resends a notification answered 503 (if it does not, the reconciliation
+   job settles it).
 5. Confirm `GET /v1/payment/?invoiceId=…` filters by invoice on the account (if the account ignores
    the filter, Odoo still matches locally by invoice and order id, but only within the newest 500
    payments of the window).
@@ -125,10 +132,14 @@ secret are never logged (covered by a test).
 - Verified state: `_process_notification_data()` → `_nowpayments_apply_verified_payment()`.
 - Reconciliation: `_nowpayments_reconcile()`, `_cron_nowpayments_reconcile()`.
 - Signature: `controllers/main.py` `nowpayments_signed_message()` reproduces JavaScript's
-  `JSON.stringify` of the recursively key-sorted body (numbers such as `100.0` serialize as `100`).
+  `JSON.stringify` of the recursively key-sorted body. Numbers follow JavaScript's
+  Number::toString (`100.0` → `100`, `0.0000012` → `0.0000012`, `1e-7` → `1e-7`); the formatter
+  was compared with Node's `JSON.stringify` on 10,000 values.
+- `NowPaymentsUnavailable` (a `ValidationError`) marks failures that may succeed later
+  (transport errors, HTTP 429/5xx).
 - Tests: `tests/test_nowpayments_flows.py` (HTTP routes with a fake NOWPayments API: trusted amount
   and currency, one invoice per transaction, per-company provider, signature refusal, completion
   without the buyer, amount mismatch, foreign payment, duplicate notifications with real accounting
   post-processing, delayed confirmation, partial payment, beyond-ten-payments return, no secrets in
-  logs) and `tests/test_nowpayments_signature.py`. Run with
+  logs, IPN not acknowledged while the provider is unavailable, row lock before invoice creation) and `tests/test_nowpayments_signature.py`. Run with
   `odoo-bin -u mlr_ecommerce_nowpayments --test-tags /mlr_ecommerce_nowpayments`.

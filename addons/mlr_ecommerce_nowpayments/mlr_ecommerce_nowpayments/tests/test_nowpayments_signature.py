@@ -33,3 +33,16 @@ class TestNowPaymentsSignature(BaseCase):
             nowpayments_signature('secret', body),
             hmac.new(b'secret', expected.encode(), hashlib.sha512).hexdigest(),
         )
+
+    def test_numbers_are_printed_as_javascript_prints_them(self):
+        # Crypto amounts often fall between 1e-6 and 1e-4, where Python's repr switches to
+        # exponential notation and JavaScript does not. Expected values are Node's JSON.stringify.
+        body = {
+            'actually_paid': 0.0000012, 'outcome_amount': 0.00005, 'network_fee': 1e-7,
+            'rate': 1.2345678901234568e20, 'big': 2 ** 60, 'zero': -0.0, 'tiny': 1e-6,
+        }
+        self.assertEqual(
+            nowpayments_signed_message(body),
+            '{"actually_paid":0.0000012,"big":1152921504606847000,"network_fee":1e-7,'
+            '"outcome_amount":0.00005,"rate":123456789012345680000,"tiny":0.000001,"zero":0}',
+        )
