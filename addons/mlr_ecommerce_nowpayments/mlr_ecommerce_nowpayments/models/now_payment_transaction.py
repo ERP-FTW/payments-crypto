@@ -48,7 +48,9 @@ class PaymentTransaction(models.Model):
 
     def _nowpayments_invoice_payload(self):
         self.ensure_one()
-        base_url = self.provider_id.get_base_url()
+        # get_base_url() may end with a slash (a website domain does); a doubled slash in the
+        # callback path would not route.
+        base_url = self.provider_id.get_base_url().rstrip('/')
         return {
             'price_amount': self.amount,
             'price_currency': self.currency_id.name.lower(),

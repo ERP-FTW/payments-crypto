@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import logging
+from unittest.mock import patch
 
 from odoo.tests import tagged
 
@@ -49,11 +50,16 @@ class TestNowPaymentsFlows(NowPaymentsCommon, PaymentHttpCommon):
 
     def test_invoice_requests_callback_and_is_reused_on_resubmit(self):
         tx = self._create_transaction('redirect')
-        self._create_invoice(tx)
-        self._create_invoice(tx)
+        # A website domain comes back with a trailing slash.
+        with patch.object(type(self.env['payment.provider']), 'get_base_url',
+                          return_value='https://shop.example.com/'):
+            self._create_invoice(tx)
+            self._create_invoice(tx)
         invoice_calls = self.fake.calls_to('/v1/invoice', 'POST')
         self.assertEqual(len(invoice_calls), 1, "a resubmitted checkout must not open a second invoice")
-        self.assertTrue(invoice_calls[0]['json'].get('ipn_callback_url', '').endswith('/payment/now/ipn'))
+        callback = invoice_calls[0]['json'].get('ipn_callback_url', '')
+        self.assertTrue(callback.endswith('/payment/now/ipn'))
+        self.assertEqual(callback, 'https://shop.example.com/payment/now/ipn')
 
     def test_invoice_uses_the_transaction_provider_of_its_company(self):
         company_b = self.env['res.company'].create({'name': 'NOWPayments Company B'})
