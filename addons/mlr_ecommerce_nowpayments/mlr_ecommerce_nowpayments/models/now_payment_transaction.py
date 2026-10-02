@@ -5,7 +5,7 @@ from werkzeug.urls import url_encode
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
-from odoo.tools import float_compare
+from odoo.tools import SQL, float_compare
 
 _logger = logging.getLogger(__name__)
 
@@ -71,6 +71,11 @@ class PaymentTransaction(models.Model):
         if self.provider_code != 'now':
             raise ValidationError(_("NOWPayments: transaction %s is not a NOWPayments transaction.",
                                     self.reference))
+        # Two overlapping checkouts of the same transaction must not each open an invoice. The
+        # second one waits on this row lock; once this request commits, Odoo retries it (the row
+        # changed under its snapshot) and it then reuses the invoice stored here.
+        self.env.cr.execute(SQL("SELECT id FROM payment_transaction WHERE id = %s FOR UPDATE", self.id))
+        self.invalidate_recordset(['state', 'crypto_invoice_id', 'crypto_payment_link'])
         if self.state not in ('draft', 'pending'):
             raise ValidationError(_("NOWPayments: transaction %(ref)s is already %(state)s.",
                                     ref=self.reference, state=self.state))

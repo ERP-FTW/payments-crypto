@@ -28,6 +28,7 @@ class FakeNowPayments:
     def __init__(self):
         self.calls = []
         self.payments = {}  # payment_id -> payment dict as GET /v1/payment/{id} returns it
+        self.payment_lookup_failure = None  # an HTTP status or an exception for GET /v1/payment/{id}
         self.next_invoice_id = 5000
 
     def _record(self, method, url, headers=None, json_body=None):
@@ -67,6 +68,11 @@ class FakeNowPayments:
             window = data_rows[page * limit:(page + 1) * limit]
             return FakeResponse(200, {'data': window, 'limit': limit, 'page': page, 'total': len(data_rows)})
         if method.upper() == 'GET' and path.startswith('/v1/payment/'):
+            failure = self.payment_lookup_failure
+            if isinstance(failure, Exception):
+                raise failure
+            if failure:
+                return FakeResponse(failure, {'message': 'temporarily unavailable'})
             payment_id = path[len('/v1/payment/'):].strip('/')
             if payment_id in self.payments:
                 return FakeResponse(200, self.payments[payment_id])

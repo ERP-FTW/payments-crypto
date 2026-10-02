@@ -4,31 +4,55 @@ import json
 import logging
 import math
 import re
+from decimal import Decimal
 
 from werkzeug.exceptions import Forbidden
 
 from odoo.exceptions import ValidationError
 from odoo.http import Controller, request, route
 
+from odoo.addons.mlr_ecommerce_nowpayments.models.now_payment_provider import NowPaymentsUnavailable
+
 _logger = logging.getLogger(__name__)
 
 
+_JS_SAFE_INTEGER = 2 ** 53
+
+
 def _js_number(value):
-    """Format a number the way JavaScript's JSON.stringify does."""
+    """Format a number the way JavaScript's JSON.stringify does.
+
+    JavaScript reads every JSON number as a double and prints it with Number::toString: the
+    shortest digits that round-trip (Python's repr finds the same digits), in fixed notation from
+    1e-6 up to 1e21 and in exponential notation outside that range. Python switches to exponential
+    notation at 1e-4 and 1e16, so its own formatting cannot be used.
+    """
     if isinstance(value, bool):
         return 'true' if value else 'false'
     if isinstance(value, int):
-        return str(value)
+        if abs(value) <= _JS_SAFE_INTEGER:
+            return str(value)
+        value = float(value)
     if math.isnan(value) or math.isinf(value):
         return 'null'
-    if value.is_integer() and abs(value) < 1e21:
-        return str(int(value))
-    text = repr(value)
-    if 'e' in text:
-        mantissa, exponent = text.split('e')
-        sign = '-' if exponent.startswith('-') else '+'
-        text = f"{mantissa}e{sign}{exponent.lstrip('+-').lstrip('0') or '0'}"
-    return text
+    if value == 0:
+        return '0'
+    sign = '-' if value < 0 else ''
+    digits_tuple, exponent = Decimal(repr(abs(value))).as_tuple()[1:]
+    digits = ''.join(map(str, digits_tuple)).rstrip('0')
+    exponent += len(digits_tuple) - len(digits)
+    k = len(digits)
+    n = exponent + k  # value == 0.<digits> * 10**n
+    if k <= n <= 21:
+        text = digits + '0' * (n - k)
+    elif 0 < n <= 21:
+        text = f"{digits[:n]}.{digits[n:]}"
+    elif -6 < n <= 0:
+        text = '0.' + '0' * -n + digits
+    else:
+        mantissa = digits if k == 1 else f"{digits[0]}.{digits[1:]}"
+        text = f"{mantissa}e{'+' if n - 1 > 0 else '-'}{abs(n - 1)}"
+    return sign + text
 
 
 def nowpayments_signed_message(value):
@@ -143,6 +167,12 @@ class NowPaymentsController(Controller):
             tx_sudo._handle_notification_data('now', {
                 'order_id': tx_sudo.reference, 'payment_id': data.get('payment_id'),
             })
+        except NowPaymentsUnavailable as error:
+            # The payment could not be verified now: do not acknowledge, so the notification can
+            # be sent again (the reconciliation job also retries).
+            _logger.warning("NOWPayments: notification for %s not verified yet: %s",
+                            tx_sudo.reference, error)
+            return request.make_json_response({'status': 'retry'}, status=503)
         except ValidationError as error:
             # Acknowledge: retrying the same notification cannot make it valid.
             _logger.warning("NOWPayments: notification for %s not applied: %s",

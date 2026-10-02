@@ -113,6 +113,50 @@ class TestNowPaymentsFlows(NowPaymentsCommon, PaymentHttpCommon):
         # The status was re-read from the provider, not taken from the callback body.
         self.assertTrue(self.fake.calls_to('/v1/payment/4400001', 'GET'))
 
+    def test_ipn_is_not_acknowledged_while_the_provider_cannot_confirm_it(self):
+        import requests
+        tx = self._create_transaction('redirect')
+        self._create_invoice(tx)
+        payment = self._provider_payment(tx, payment_id='4400009', status='finished')
+        for failure in (503, 429, requests.exceptions.ConnectTimeout('timed out')):
+            with self.subTest(failure=failure):
+                self.fake.payment_lookup_failure = failure
+                response = self._ipn(self._ipn_body(payment))
+                self.assertEqual(response.status_code, 503, "a retryable answer, so NOWPayments sends it again")
+                self.assertNotEqual(tx.state, 'done')
+        self.fake.payment_lookup_failure = None
+        response = self._ipn(self._ipn_body(payment))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(tx.state, 'done')
+
+    def test_ipn_for_a_payment_the_provider_does_not_know_is_acknowledged(self):
+        tx = self._create_transaction('redirect')
+        self._create_invoice(tx)
+        payment = self._provider_payment(tx, payment_id='4400010', status='finished')
+        del self.fake.payments['4400010']  # NOWPayments answers 404: retrying cannot change that
+        response = self._ipn(self._ipn_body(payment))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(tx.state, 'done')
+
+    def test_invoice_creation_holds_the_transaction_row_lock(self):
+        tx = self._create_transaction('redirect')
+        invoices_opened_at_lock = []
+        cursor_class = type(self.env.cr)
+        original_execute = cursor_class.execute
+
+        def execute(cr, query, params=None, log_exceptions=True):
+            text = str(getattr(query, 'code', query))
+            if 'FOR UPDATE' in text and 'payment_transaction' in text:
+                invoices_opened_at_lock.append(len(self.fake.calls_to('/v1/invoice', 'POST')))
+            return original_execute(cr, query, params, log_exceptions)
+
+        with patch.object(cursor_class, 'execute', execute):
+            tx._nowpayments_get_invoice_url()
+        # The row is locked before the invoice is opened, so a concurrent checkout of the same
+        # transaction waits and then finds the invoice instead of opening its own.
+        self.assertEqual(invoices_opened_at_lock, [0])
+        self.assertEqual(len(self.fake.calls_to('/v1/invoice', 'POST')), 1)
+
     def test_callback_body_cannot_override_provider_amount(self):
         tx = self._create_transaction('redirect')
         self._create_invoice(tx)
