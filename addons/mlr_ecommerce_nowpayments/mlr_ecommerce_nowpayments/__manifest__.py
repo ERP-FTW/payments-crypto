@@ -13,6 +13,7 @@
         "data/now_payment_method_data.xml",
         "data/now_payment_provider_data.xml",
         "views/now_payment_provider.xml",
+        "data/now_payment_cron.xml",
     ],
     "installable": True,
     "application": False,

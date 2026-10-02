@@ -1,144 +1,150 @@
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
-
-import logging
-import pprint
+import hashlib
+import hmac
 import json
-import requests
+import logging
+import math
+import re
 
+from werkzeug.exceptions import Forbidden
+
+from odoo.exceptions import ValidationError
 from odoo.http import Controller, request, route
 
 _logger = logging.getLogger(__name__)
 
+
+def _js_number(value):
+    """Format a number the way JavaScript's JSON.stringify does."""
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, int):
+        return str(value)
+    if math.isnan(value) or math.isinf(value):
+        return 'null'
+    if value.is_integer() and abs(value) < 1e21:
+        return str(int(value))
+    text = repr(value)
+    if 'e' in text:
+        mantissa, exponent = text.split('e')
+        sign = '-' if exponent.startswith('-') else '+'
+        text = f"{mantissa}e{sign}{exponent.lstrip('+-').lstrip('0') or '0'}"
+    return text
+
+
+def nowpayments_signed_message(value):
+    """Serialize a notification body as NOWPayments signs it.
+
+    NOWPayments' reference implementation sorts object keys recursively and signs
+    `JSON.stringify(sorted)`. Python's json module formats some numbers differently from
+    JavaScript (`1.0` versus `1`), so the serialization is reproduced here explicitly instead of
+    relying on json.dumps.
+    """
+    if isinstance(value, dict):
+        items = ','.join(
+            f"{json.dumps(str(key), ensure_ascii=False)}:{nowpayments_signed_message(value[key])}"
+            for key in sorted(value, key=str)
+        )
+        return '{' + items + '}'
+    if isinstance(value, list):
+        # The reference sortObject() turns an array into an object keyed by index.
+        return nowpayments_signed_message({str(i): item for i, item in enumerate(value)})
+    if value is None:
+        return 'null'
+    if isinstance(value, (int, float)):
+        return _js_number(value)
+    return json.dumps(value, ensure_ascii=False)
+
+
+def nowpayments_signature(secret, body):
+    return hmac.new(
+        secret.encode('utf-8'), nowpayments_signed_message(body).encode('utf-8'), hashlib.sha512,
+    ).hexdigest()
+
+
 class NowPaymentsController(Controller):
     _return_url = '/payment/now/return'
     _create_invoice_url = '/payment/now/createInvoice'
+    _ipn_url = '/payment/now/ipn'
 
-    def nowApiCall(self, payload, api, method, jwt=0):
-        try:
-            _logger.info(f"Called nowApiCall")
-
-            crypto_details = request.env['payment.provider'].sudo().search([('code', '=', 'now')], limit=1)
-            base_url = crypto_details.crypto_server_url.rstrip('/')  # <- normalize
-            api_key = crypto_details.crypto_api_key
-
-            server_url = f"{base_url}{api}"
-            if jwt:
-                jwt_payload = {
-                    "email": crypto_details.nowpayments_username,
-                    "password": crypto_details.nowpayments_password,
-                }
-                jwt_response = self.nowApiCall(jwt_payload, '/v1/auth', 'POST', jwt=0)
-                jwtoken = jwt_response.json()['token']
-                headers = {
-                    "x-api-key": api_key,
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "Authorization": f"Bearer {jwtoken}",
-                }
-            else:
-                headers = {
-                    "x-api-key": api_key,
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                }
-
-            if method == "GET":
-                response = requests.get(server_url, headers=headers, timeout=20)
-            elif method == "POST":
-                # ✅ send JSON correctly
-                response = requests.post(server_url, json=payload, headers=headers, timeout=20)
-
-            # ✅ robust logging: don't blow up on non-JSON
-            try:
-                body = response.json()
-            except Exception:
-                body = response.text[:500]  # log first 500 chars if not JSON
-
-            _logger.info("NOWPayments %s %s -> %s %s", method, server_url, response.status_code, body)
-            return response
-        except Exception as e:
-            _logger.exception(f"Error during NowPayments API call: {e}")
-            raise
+    @staticmethod
+    def _get_now_tx(reference):
+        if not reference:
+            return request.env['payment.transaction']
+        return request.env['payment.transaction'].sudo().search([
+            ('reference', '=', reference), ('provider_code', '=', 'now'),
+        ], limit=1)
 
     @route(_create_invoice_url, type='http', auth='public', methods=['POST'], csrf=False)
     def create_invoice(self, **post):
-        """Create a NowPayments invoice."""
-        try:
-            _logger.info(f"Called create_invoice with data: {post}")
-            trn = request.env['payment.transaction'].sudo().search([
-                ('reference', '=', post['reference']),
-                ('provider_code', '=', 'now')
-            ], limit=1)
+        """Open (or reopen) the NOWPayments invoice of a checkout transaction.
 
-            crypto_details = request.env['payment.provider'].sudo().search([('code', '=', 'now')], limit=1)
-            crypto_min_amount = crypto_details.crypto_min_amount
-            crypto_max_amount = crypto_details.crypto_max_amount
-
-            amount = float(post['amount'])
-            if amount < crypto_min_amount or amount > crypto_max_amount:
-                _logger.warning(f"Amount {amount} outside allowed range.")
-                return request.redirect('/shop/payment')
-
-            web_base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
-            success_url = f"{web_base_url}/payment/now/return?ref={post['reference']}"
-
-            payload = {
-                "price_amount": amount,
-                "price_currency": post['currency_id'],
-                "success_url": success_url,
-                "order_id": post['reference'],
-            }
-            api_response = self.nowApiCall(payload, '/v1/invoice', 'POST')
-            api_response_json = api_response.json()
-
-            if api_response.status_code == 200:
-                payment_method = request.env['payment.method'].sudo()._get_from_code('nowpayments')
-                trn.write({
-                    'crypto_invoice_id': api_response_json.get('id'),
-                    'payment_method_id': payment_method.id,
-                })
-                return request.redirect(api_response_json.get('invoice_url'), local=False)
-            else:
-                _logger.warning(f"Failed to create NowPayments invoice: {api_response.text}")
-                trn._set_error("Failed to create NowPayments invoice.")
-                return request.redirect('/payment/status')
-
-        except Exception as e:
-            _logger.exception(f"Error in create_invoice: {e}")
+        Only `reference` is read from the form. Amount, currency, provider and company all come
+        from the transaction itself.
+        """
+        tx_sudo = self._get_now_tx(post.get('reference'))
+        if not tx_sudo:
+            _logger.warning("NOWPayments: invoice requested for unknown reference %s",
+                            post.get('reference'))
             return request.redirect('/payment/status')
+        try:
+            invoice_url = tx_sudo._nowpayments_get_invoice_url()
+        except ValidationError as error:
+            _logger.warning("NOWPayments: no invoice for %s: %s", tx_sudo.reference, error)
+            if tx_sudo.state == 'draft':
+                tx_sudo._set_error(str(error))
+            return request.redirect('/payment/status')
+        return request.redirect(invoice_url, local=False)
 
-    @route(_return_url, type='http', auth='public', methods=['GET', 'POST'], csrf=False)
     @route(_return_url, type='http', auth='public', methods=['GET', 'POST'], csrf=False)
     def custom_process_transaction(self, **post):
+        """The buyer came back from NOWPayments: settle from the provider's state if available."""
+        tx_sudo = self._get_now_tx(post.get('ref') or post.get('reference'))
+        if tx_sudo:
+            try:
+                tx_sudo._nowpayments_reconcile()
+            except ValidationError as error:
+                _logger.warning("NOWPayments: return for %s not settled yet: %s",
+                                tx_sudo.reference, error)
+        return request.redirect('/payment/status')
+
+    @route(_ipn_url, type='http', auth='public', methods=['POST'], csrf=False)
+    def nowpayments_ipn(self):
+        """Instant payment notification.
+
+        The signature is checked with the IPN secret of the transaction's own provider. The body
+        is then used only to identify the payment; its state is re-read from NOWPayments.
+        """
+        raw = request.httprequest.get_data()
         try:
-            _logger.info(f"Handling NowPayments return with data: {post}")
-
-            # ✅ accept both ?ref=... and ?reference=...
-            ref = post.get('ref') or post.get('reference')
-
+            data = json.loads(raw)
+        except ValueError:
+            _logger.warning("NOWPayments: notification with a non-JSON body refused")
+            raise Forbidden()
+        if not isinstance(data, dict):
+            raise Forbidden()
+        _logger.info("NOWPayments notification for order %s payment %s status %s",
+                     data.get('order_id'), data.get('payment_id'), data.get('payment_status'))
+        try:
             tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
-                'now', {'order_id': ref}  # ✅ pass the actual reference
-            )
+                'now', data)
+        except ValidationError:
+            _logger.warning("NOWPayments: notification for unknown order %s", data.get('order_id'))
+            return request.make_json_response('')
 
-            api_response = self.nowApiCall({}, '/v1/payment/?limit=10&page=0&sortBy=created_at&orderBy=desc', 'GET',
-                                           jwt=1)
-            res_json = api_response.json().get('data', []) if api_response.ok else []
+        secret = tx_sudo.provider_id.sudo().nowpayments_ipn_secret
+        received = request.httprequest.headers.get('x-nowpayments-sig') or ''
+        if not secret or not re.fullmatch(r'[0-9a-fA-F]{128}', received) or not hmac.compare_digest(
+            received.lower(), nowpayments_signature(secret, data)
+        ):
+            _logger.warning("NOWPayments: notification for %s refused (signature)", tx_sudo.reference)
+            raise Forbidden()
 
-            for payment in res_json:
-                if payment.get('order_id') == ref:
-                    notification_data = {
-                        'payment_status': payment.get('payment_status'),
-                        'payment_id': payment.get('payment_id'),
-                        'amount': payment.get('price_amount'),
-                        'currency_id': payment.get('price_currency'),
-                    }
-                    tx_sudo._handle_notification_data('now', notification_data)
-                    _logger.info(f"Processed NowPayments transaction for ref {ref}")
-                    break
-
-            return request.redirect('/payment/status')
-
-        except Exception as e:
-            _logger.exception(f"Error handling NowPayments transaction return: {e}")
-            return request.redirect('/payment/status')
-
+        try:
+            tx_sudo._handle_notification_data('now', {
+                'order_id': tx_sudo.reference, 'payment_id': data.get('payment_id'),
+            })
+        except ValidationError as error:
+            # Acknowledge: retrying the same notification cannot make it valid.
+            _logger.warning("NOWPayments: notification for %s not applied: %s",
+                            tx_sudo.reference, error)
+        return request.make_json_response('')
