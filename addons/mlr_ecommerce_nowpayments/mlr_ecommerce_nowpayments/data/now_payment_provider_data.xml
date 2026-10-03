@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<odoo>
+<odoo noupdate="1">
     <record id="payment_provider_now" model="payment.provider">
         <field name="name">now</field>
         <field name="code">now</field>
