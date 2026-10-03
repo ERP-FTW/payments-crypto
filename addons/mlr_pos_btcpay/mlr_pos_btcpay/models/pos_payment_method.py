@@ -39,22 +39,23 @@ class PosPaymentMethod(models.Model):
         string="Speed Policy",
     )
     def call_btcpay_api(self,payload,api,method,jwt=0):
+        """Call the BTCPay Greenfield API with this payment method's key.
+
+        Only the method, path and HTTP status are logged: never the headers (they carry the API
+        key) nor the payload.
+        """
         try:
-            _logger.info(f"Called BTCPay call_btcpay_api. Passed args are {payload}")
             request_url = f"{self.server_url}{api}"
-            headers = {"Authorization": "Token %s" % (self.api_key), "Content-Type": "application/json"}
-            _logger.info(f"value of server_url is {request_url} and method is {method} and header is {headers}")
+            headers = {"Authorization": "token %s" % (self.api_key), "Content-Type": "application/json"}
             if method == "GET":
-                _logger.info(f"value of server_url is {request_url} and method is {method} and header is {headers}")
-                apiRes=requests.request(method="GET", url=request_url, headers=headers)
-                _logger.info(f"value of server_url is {request_url} and method is {method} and header is {headers}")
+                apiRes = requests.request(method="GET", url=request_url, headers=headers, timeout=TIMEOUT)
             elif method == "POST":
-                apiRes=requests.request(method="POST",url=request_url, data=json.dumps(payload), headers=headers)
-            _logger.info(f"Completed BTCPay call_btcpay_api, status {apiRes.status_code}. Passing back {apiRes}")
+                apiRes = requests.request(method="POST", url=request_url, data=json.dumps(payload), headers=headers, timeout=TIMEOUT)
+            _logger.info("BTCPay %s %s -> HTTP %s", method, api, apiRes.status_code)
             return apiRes
         except Exception as e:
-            _logger.info("API call failure: %s", e.args)
-            raise UserError(_("API call failure: %s", e.args))
+            _logger.info("BTCPay %s %s failed: %s", method, api, type(e).__name__)
+            raise UserError(_("API call failure: %s", type(e).__name__))
 
     def _test_connection(self):
         _logger.info("called btcpay check connection")
@@ -62,20 +63,21 @@ class PosPaymentMethod(models.Model):
             return self.call_btcpay_api({},"/api/v1/health","GET")
         else:
             return super()._test_connection()
-    def action_get_conversion_rate(self): #obtains conversion rate from BTCpay server
-        try:
-            server_url = self.server_url + "/api/v1/stores/" + self.btcpay_store_id + "/rates"
-            headers = {"Authorization": "Token %s" % (self.api_key)}
-            response = requests.request(method="GET", url=server_url, headers=headers)
-            response_json = response.json()
-            _logger.info(f"Called BTCPay action_get_conversion_rate1. Response is {response_json}")
-            #response = self.call_btcpay_api({}, server_url, 'GET')
-            #response_json = response.json()
-            #_logger.info(f"Called BTCPay action_get_conversion_rate2. Response is {response_json}")
-            result = response_json[0]['rate'] if response.status_code == 200 else None
-            return result
-        except Exception as e:
-            raise UserError(_("Get Conversion Rate: %s", e.args))
+    def action_get_conversion_rate(self):
+        """BTC rate in the payment method's company currency, from the store's rate settings.
+
+        Greenfield `GET /api/v1/stores/{storeId}/rates?currencyPair=BTC_<CUR>` answers a list of
+        `{currencyPair, rate, errors}`; the row for the requested pair is used, never the first one.
+        """
+        currency = (self.company_id.currency_id or self.env.company.currency_id).name
+        pair = f"BTC_{currency}"
+        response = self.call_btcpay_api({}, f"/api/v1/stores/{self.btcpay_store_id}/rates?currencyPair={pair}", 'GET')
+        if response.status_code != 200:
+            raise UserError(_("Get Conversion Rate: BTCPay answered HTTP %s", response.status_code))
+        rows = [row for row in (response.json() or []) if row.get('currencyPair') == pair]
+        if not rows or rows[0].get('errors') or not rows[0].get('rate'):
+            raise UserError(_("Get Conversion Rate: the store has no %s rate", pair))
+        return float(rows[0]['rate'])
 
     def get_amount_sats(self, pos_payment_obj): #obtains amount of satoshis to invoice by calling action_get_conversion_rate and and doing the math, returns dict of both values
         try:
@@ -95,14 +97,14 @@ class PosPaymentMethod(models.Model):
         try:
             _logger.info(f"Called BTCPay btcpay_create_crypto_invoice_payment_link. Passed args are {args}")
             invoiced_info = self.get_amount_sats(args)
-            amount_btc = invoiced_info['invoiced_sat_amount'] /100000000  # converts sats to millisats as required by btcpayserver
-            lightning_expiration_minutes = self.btcpay_expiration_minutes * 60
+            amount_btc = invoiced_info['invoiced_sat_amount'] /100000000  # sats to BTC
             payload = {
                 "metadata": {
                     "orderId":str(self.btcpay_company_name) + " Order: " + str(args.get('order_id'))},
                 "checkout": {
                     "speedPolicy": str(self.btcpay_speed_policy),
-                    "expirationMinutes": lightning_expiration_minutes,},
+                    # Greenfield checkout.expirationMinutes is in minutes.
+                    "expirationMinutes": self.btcpay_expiration_minutes,},
                  "amount": amount_btc,
                 "currency": "BTC",}
             server_url = "/api/v1/stores/" + self.btcpay_store_id + "/invoices/"
@@ -130,18 +132,16 @@ class PosPaymentMethod(models.Model):
         try:
             _logger.info(f"Called BTCPay btcpay_create_crypto_invoice_direct_invoice. Passed args are {args}")
             invoiced_info = self.get_amount_sats(args)
-            amount_millisats = invoiced_info['invoiced_sat_amount'] * 1000  # converts sats to millisats as required by btcpayserver
-            lightning_expiration_minutes = self.btcpay_expiration_minutes * 60  # conversion of expiration time from min to sec for submission to btcpay server
-            headers = {"Authorization": "Token %s" % (self.api_key), "Content-Type": "application/json"}
+            # Greenfield Lightning invoices take a millisatoshi string and an expiry in seconds.
+            amount_millisats = str(int(round(invoiced_info['invoiced_sat_amount'] * 1000)))
+            lightning_expiration_seconds = self.btcpay_expiration_minutes * 60
             if self.btcpay_selected_crypto == 'lightning':
-                server_url = self.server_url + "/api/v1/stores/" + self.btcpay_store_id + "/lightning/BTC/invoices"
+                server_url = "/api/v1/stores/" + self.btcpay_store_id + "/lightning/BTC/invoices"
                 payload = {
                     "amount": amount_millisats,
                     "description": str(self.btcpay_company_name) + " Order: " + str(args.get('order_id')),
-                    "expiry": lightning_expiration_minutes,}
-            #create_invoice_api = self.call_btcpay_api(payload, server_url, 'POST')
-            create_invoice_api = requests.request(method="POST", url=server_url, data=json.dumps(payload), headers=headers)
-            _logger.info(create_invoice_api.json())
+                    "expiry": lightning_expiration_seconds,}
+            create_invoice_api = self.call_btcpay_api(payload, server_url, 'POST')
             if create_invoice_api.status_code != 200:
                 return {"code": create_invoice_api.status_code}
             create_invoice_json = create_invoice_api.json()
@@ -194,8 +194,7 @@ class PosPaymentMethod(models.Model):
             server_url = "/api/v1/stores/" + self.btcpay_store_id + "/invoices/" + args['invoice_id']
             invoice_status_api = cryptopay_pm.call_btcpay_api({}, server_url, 'GET')
             if invoice_status_api.status_code != 200:
-                invoice_status_api = {'status': 'inaccessible'}
-            _logger.info(f"Completed BTCPay btcpay_check_payment_status. Passing back {invoice_status_api.json()}")
+                return {'status': 'inaccessible', 'http_status': invoice_status_api.status_code}
             return invoice_status_api.json()
         except Exception as e:
             message = "An exception occurred with BTCPay btcpay_check_payment_status_payment_link: " + str(e)
@@ -211,8 +210,7 @@ class PosPaymentMethod(models.Model):
             server_url = "/api/v1/stores/" + self.btcpay_store_id + "/lightning/BTC/invoices/" + args['invoice_id']
             invoice_status_api = cryptopay_pm.call_btcpay_api({}, server_url, 'GET')
             if invoice_status_api.status_code != 200:
-                return false
-            _logger.info(f"Completed BTCPay btcpay_check_payment_status_direct_invoice. Passing back {invoice_status_api.json()}")
+                return {'status': 'inaccessible', 'http_status': invoice_status_api.status_code}
             return invoice_status_api.json()
         except Exception as e:
             message = "An exception occurred with BTCPay btcpay_check_payment_status_direct_invoice: " + str(e)

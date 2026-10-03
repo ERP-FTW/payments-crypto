@@ -33,17 +33,24 @@ Use a Payment Terminal = BTCPay, then:
   `{currencyPair, rate (decimal string), errors}`.
 - Webhooks sign the raw body: `BTCPay-Sig: sha256=HMAC256(secret, body)`.
 
-## Known defects at this branch (fix before qualifying)
+## Fixed on this branch (Odoo tests in `tests/test_btcpay_contract.py`; all five fail on `fbac1cc`)
 
-1. `call_btcpay_api` logs the header dictionary, including `Authorization: Token <api key>`, at INFO.
-2. The payment-link path sends `btcpay_expiration_minutes * 60` as `checkout.expirationMinutes`
-   (minutes × 60); the Lightning path's `* 60` into `expiry` (seconds) is correct.
-3. `action_get_conversion_rate` takes the first rate the store returns without asking for or
-   checking a currency pair.
-4. A failed direct-invoice status call executes `return false` (NameError).
+1. The API key is no longer logged: calls log method, path and HTTP status only.
+2. The payment-link path sends `btcpay_expiration_minutes` as `checkout.expirationMinutes`
+   (minutes); the Lightning path sends it ×60 as `expiry` (seconds) and the amount as a
+   millisatoshi string.
+3. The conversion rate is requested for `BTC_<company currency>` and read from that pair's row.
+4. A failed status call returns `{"status": "inaccessible"}` on both flows (the direct-invoice
+   path executed `return false`; the payment-link path called `.json()` on a dict).
+
+## Still open (fix before qualifying)
+
 5. The POS screen code imports `ErrorPopup` from `@web/core/confirmation_dialog/confirmation_dialog`
    and calls `this.popup.add`, neither of which exists in Odoo 18; its error and pending paths fail
    in the browser. Statuses `Paid` (legacy) and `Settled` are treated as paid; `Processing` as pending.
 6. The invoice is priced in BTC converted by Odoo from the store's rate; BTCPay can price in the POS
-   currency directly (`currency` = POS currency), which removes items 3 and the rounding of
+   currency directly (`currency` = POS currency), which removes the rate lookup and the rounding of
    `get_amount_sats`.
+7. `crypto_maximum_amount` defaults to 0.0 and refuses every amount above it: set it.
+
+No POS session, BTCPay call or browser run has been qualified on 18.
