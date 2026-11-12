@@ -35,7 +35,14 @@ class PosPaymentMethod(models.Model):
 
     def call_cryptopay_api(self,payload,api,method,jwt=0):
         try:
-            _logger.info(f"Called Now call_cryptopay_api. Passed args are {payload}")
+            # Never log payloads or headers here: authentication payloads contain
+            # the account password and headers contain both API and bearer keys.
+            _logger.info(
+                "NOWPayments request method=%s endpoint=%s authenticated=%s",
+                method,
+                api,
+                bool(jwt),
+            )
             request_url = f"{self.server_url}{api}"
             if jwt == 0:
                 headers = {"x-api-key": (self.api_key), "Content-Type": "application/json"}
@@ -43,18 +50,31 @@ class PosPaymentMethod(models.Model):
                 jwt_payload = {"email": self.nowpayments_username,
                                "password": self.nowpayments_password}
                 jwt_response = self.call_cryptopay_api(jwt_payload, '/v1/auth', 'POST', 0)
+                if jwt_response.status_code != 200:
+                    raise UserError(_("NOWPayments authentication failed."))
                 jwtoken = jwt_response.json()['token']
                 headers = {"x-api-key": (self.api_key), "Content-Type": "application/json", "Authorization": "Bearer " + jwtoken}
-            _logger.info(f"value of server_url is {request_url} and method is {method} and header is {headers}")
             if method == "GET":
                 apiRes=requests.get(request_url,headers=headers)
             elif method == "POST":
                 apiRes = requests.post(request_url, data=json.dumps(payload), headers=headers)
-            _logger.info(f"Completed Now call_cryptopay_api, status {apiRes.status_code}. Passing back {apiRes.json()}")
+            else:
+                raise UserError(_("Unsupported NOWPayments request method."))
+            _logger.info(
+                "NOWPayments response method=%s endpoint=%s status=%s",
+                method,
+                api,
+                apiRes.status_code,
+            )
             return apiRes
         except Exception as e:
-            _logger.info("An exception occurred with Now call_cryptopay_api. API call failure: %s", e.args)
-            raise UserError(_("API call failure: %s", e.args))
+            _logger.warning(
+                "NOWPayments request failed method=%s endpoint=%s error_type=%s",
+                method,
+                api,
+                type(e).__name__,
+            )
+            raise UserError(_("NOWPayments API call failed.")) from e
 
     def _test_connection(self):
         if self.use_payment_terminal == 'now':
@@ -77,7 +97,7 @@ class PosPaymentMethod(models.Model):
 
     def create_crypto_invoice_payment_link(self, args, now_sandbox, now_sandbox_case):
         try:
-            _logger.info(f"Called Now create_crypto_invoice_payment_link. Passed args are {args}")
+            _logger.info("Creating NOWPayments payment-link invoice")
             payload = {
                 "price_amount": args['amount'],
                 "price_currency": self.env.ref('base.main_company').currency_id.name,
@@ -95,7 +115,7 @@ class PosPaymentMethod(models.Model):
                 "cryptopay_payment_link": create_invoice_json['invoice_url'],
                 "crypto_amt": 'TBD',
                 "conversion_rate": 'TBD'}
-            _logger.info(f"Completed Now create_crypto_invoice_payment_link. Passing back {inv_json}")
+            _logger.info("Created NOWPayments payment-link invoice")
             return inv_json
         except Exception as e:
             message = "An exception occurred with Now create_crypto_invoice_payment_link: " + str(e)
@@ -104,7 +124,7 @@ class PosPaymentMethod(models.Model):
 
     def create_crypto_invoice_direct_invoice(self, args, now_sandbox, now_sandbox_case, now_selected_crypto):
         try:
-            _logger.info(f"Called Now create_crypto_invoice_direct_invoice. Passed args are {args}")
+            _logger.info("Creating NOWPayments direct invoice")
             minimum_amount = self.minimum_invoice_amount(now_selected_crypto)
             if minimum_amount.status_code != 200:
                 return {"code": minimum_amount.status_code}
@@ -131,7 +151,7 @@ class PosPaymentMethod(models.Model):
                 "cryptopay_payment_link": now_selected_crypto + ":" + create_invoice_json['pay_address'],
                 "crypto_amt": round(create_invoice_json['pay_amount'],6),
                 "conversion_rate": conversion_rate}
-            _logger.info(f"Completed Now create_crypto_invoice_direct_invoice. Passing back {inv_json}")
+            _logger.info("Created NOWPayments direct invoice")
             return inv_json
         except Exception as e:
             message = "An exception occurred with Now create_crypto_invoice_direct_invoice: " + str(e)
@@ -142,7 +162,7 @@ class PosPaymentMethod(models.Model):
     @api.model
     def create_crypto_invoice(self, args):
         try:
-            _logger.info(f"Called Now create invoice. Passed args are {args}")
+            _logger.info("Creating NOWPayments POS invoice")
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'now':
                 return super().create_crypto_invoice(args)
@@ -169,7 +189,7 @@ class PosPaymentMethod(models.Model):
 
     def check_payment_status_payment_link(self, args):
         try:
-            _logger.info(f"Called Now check_payment_status_payment_link. Passed args are {args}")
+            _logger.info("Checking NOWPayments payment-link status")
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'now':
                 return super().check_payment_status(args)
@@ -181,10 +201,12 @@ class PosPaymentMethod(models.Model):
             payment_to_return = {'payment_status': 'not_found'}
             for payment in resJson:
                 if payment.get('order_id') == args['order_id']:
-                    payment_to_return = {'payment_status': 'found'}
-                    if payment.get('payment_status') == "waiting":
-                        payment_to_return = payment
-            _logger.info(f"Completed Now check_payment_status_payment_link. Passing back {payment_to_return}")
+                    payment_to_return = payment
+                    break
+            _logger.info(
+                "Completed NOWPayments payment-link status check status=%s",
+                payment_to_return.get('payment_status'),
+            )
             return payment_to_return
         except Exception as e:
             message = "An exception occurred with Now check_payment_status_payment_link: " + str(e)
@@ -192,14 +214,14 @@ class PosPaymentMethod(models.Model):
             return {"payment_status": message}
     def check_payment_status_direct_invoice(self, args):
         try:
-            _logger.info(f"Called Now check_payment_status_direct_invoice. Passed args are {args}")
+            _logger.info("Checking NOWPayments direct-invoice status")
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'now':
                 return super().check_payment_status(args)
             invoice_status_api = cryptopay_pm.call_cryptopay_api({}, '/v1/payment/' + args.get('invoice_id'), 'GET')
             if invoice_status_api.status_code != 200:
-                return false
-            _logger.info(f"Completed Now check_payment_status_payment_link. Passing back {invoice_status_api.json()}")
+                return {'payment_status': 'inaccessible'}
+            _logger.info("Completed NOWPayments direct-invoice status check")
             return invoice_status_api.json()
         except Exception as e:
             message = "An exception occurred with Now check_payment_status_direct_invoice: " + str(e)
@@ -209,17 +231,23 @@ class PosPaymentMethod(models.Model):
     @api.model 
     def now_check_payment_status(self, args):
         try:
-            _logger.info(f"Called Now now_check_payment_status. Passed args are {args}")
+            _logger.info("Checking NOWPayments POS payment status")
             cryptopay_pm = self.env['pos.payment.method'].search([('id', '=', args['pm_id'])], limit=1)
             if cryptopay_pm.use_payment_terminal != 'now':
                 return super().check_payment_status(args)
             if cryptopay_pm.now_payment_flow == 'direct invoice':
                 check_payment_api = cryptopay_pm.check_payment_status_direct_invoice(args)
-                _logger.info(f"Completed Now now_check_payment_status. Passing back {check_payment_api}")
+                _logger.info(
+                    "Completed NOWPayments POS payment status check status=%s",
+                    check_payment_api.get('payment_status'),
+                )
                 return check_payment_api
             else:
                 check_payment_api = cryptopay_pm.check_payment_status_payment_link(args)
-                _logger.info(f"Completed Now now_check_payment_status. Passing back {check_payment_api}")
+                _logger.info(
+                    "Completed NOWPayments POS payment status check status=%s",
+                    check_payment_api.get('payment_status'),
+                )
                 return check_payment_api
         except Exception as e:
             message = "An exception occurred with Now now_check_payment_status: " + str(e)

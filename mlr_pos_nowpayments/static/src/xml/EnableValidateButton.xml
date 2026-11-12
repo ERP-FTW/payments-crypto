@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-	<t t-name="PaymentScreen" t-inherit="point_of_sale.PaymentScreen" t-inherit-mode="extension" owl="1">
-		<xpath expr="//div[hasclass('validation')]" position="replace">
-                        <div t-if="!env.isMobile" class="button next validation" t-att-class="{ highlight: currentOrder.is_paid() and currentOrder._isValidEmptyOrder() or (typeof currentOrder.selected_paymentline !== 'undefined' and currentOrder.selected_paymentline.is_crypto_payment and currentOrder.selected_paymentline.payment_method.use_payment_terminal == 'now') }"
-                            t-on-click="() => this.trigger('validate-order')">
-                            <div class="pay-circle">
-                                <i class="fa fa-chevron-right" role="img" aria-label="Pay" title="Pay" />
-                            </div>
-                            <span class="next_text">Validate</span>
-                        </div>
-		</xpath>
-	</t>
+    <t t-name="mlr_pos_nowpayments.PaymentScreenValidate"
+       t-inherit="point_of_sale.PaymentScreenValidate"
+       t-inherit-mode="extension">
+        <xpath expr="//button[contains(@class, 'validation-button')]" position="attributes">
+            <attribute name="t-attf-class">
+                {{ ui.isSmall ? 'btn-switchpane flex-fill' : 'button next w-50' }}
+                {{ (currentOrder.canBeValidated() and !currentOrder.isRefundInProcess()) or selectedPaymentLine?.is_crypto_payment ? 'highlight' : 'disabled' }}
+            </attribute>
+        </xpath>
+    </t>
 </templates>
