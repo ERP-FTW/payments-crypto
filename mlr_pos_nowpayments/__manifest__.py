@@ -15,8 +15,8 @@
     'installable': True,
     'assets': {
         'point_of_sale._assets_pos': [
-            'mlr_pos_nowpayments/static/**/*',
-            'mlr_pos_nowpayments/static/**/**/*',
+            'mlr_pos_nowpayments/static/src/js/**/*.js',
+            'mlr_pos_nowpayments/static/src/xml/**/*.xml',
         ],
     },
     'license': 'LGPL-3',
