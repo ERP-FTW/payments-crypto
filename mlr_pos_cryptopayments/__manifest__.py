@@ -14,7 +14,9 @@
     'installable': True,
     'assets': {
         'point_of_sale._assets_pos': [
-            'mlr_pos_cryptopayments/static/**/*',
+            'mlr_pos_cryptopayments/static/src/js/**/*.js',
+            'mlr_pos_cryptopayments/static/src/xml/**/*.xml',
+            'mlr_pos_cryptopayments/static/src/scss/**/*.scss',
         ],
     },
     'license': 'LGPL-3',
