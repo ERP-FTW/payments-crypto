@@ -5,7 +5,7 @@ Installs on Odoo 18.0 (`70bdd4035000c836f9f459345e45cc4d408c68d8`, verified toge
 POS session, BTCPay call or browser run has been qualified on 18**, so it is not yet offered as a
 ready recipe.
 
-Module root: `addons/mlr_pos_btcpay/mlr_pos_btcpay/`.
+Module root: `mlr_pos_btcpay/`. Add the repository root to `addons_path`.
 
 ## Configuration (POS → Configuration → Payment Methods)
 

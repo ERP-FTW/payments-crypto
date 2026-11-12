@@ -4,8 +4,7 @@ Adds NOWPayments (`payment.provider` code `now`) to the Odoo 18 web shop and inv
 buyer is redirected to a NOWPayments hosted invoice, pays in the coin of their choice, and the Odoo
 transaction is confirmed from the state NOWPayments itself reports.
 
-Module root: `addons/mlr_ecommerce_nowpayments/mlr_ecommerce_nowpayments/` (note the nesting: the
-addons path needs `addons/mlr_ecommerce_nowpayments` and `addons/mlr_ecommerce_cryptopayments`).
+Module root: `mlr_ecommerce_nowpayments/`. Add the repository root to `addons_path`; it also exposes the dependency `mlr_ecommerce_cryptopayments`.
 Depends on `website`, `mlr_ecommerce_cryptopayments` (and through it `website_sale`).
 
 Verified on Odoo 18.0 Community (`70bdd4035000c836f9f459345e45cc4d408c68d8`): install, upgrade
