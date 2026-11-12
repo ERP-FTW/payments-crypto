@@ -2,7 +2,7 @@
 {
     'name': 'POS Crypto Payments - NowPayments',
     'author': "MLR - MI Lightning Rod",
-    'version': '16.0',
+    'version': '19.0.1.0.0',
     'category': 'Sales/Point of Sale',
     'sequence': 6,
     'summary': 'Integrate your POS with a large number of on-chain cryptocurrencies through NowPayments',
@@ -14,7 +14,7 @@
     'depends': ['point_of_sale','mlr_pos_cryptopayments'],
     'installable': True,
     'assets': {
-        'point_of_sale.assets': [
+        'point_of_sale._assets_pos': [
             'mlr_pos_nowpayments/static/**/*',
             'mlr_pos_nowpayments/static/**/**/*',
         ],

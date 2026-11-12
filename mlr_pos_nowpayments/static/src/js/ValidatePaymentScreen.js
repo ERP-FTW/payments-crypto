@@ -1,80 +1,89 @@
-odoo.define("point_of_sale.NowValidatePaymentScreen", function (require) {
-    "use strict";
-    const PaymentScreen = require("point_of_sale.PaymentScreen");
-    const Registries = require("point_of_sale.Registries");
-    var rpc = require('web.rpc');
-  
-    const NowValidatePaymentScreen = (PaymentScreen) =>
-      class extends PaymentScreen {
-        setup() {
-          super.setup();
-        }
-        async validateOrder(isForceValidate) {
-            for (let line of this.paymentLines) {
-            console.log("called now validation");
-            if(line.is_crypto_payment && line.payment_method.use_payment_terminal == 'now') {
-            try {
-                let order_id = this.env.pos.get_order().uid;
-                let api_resp = await rpc.query({
-                    model: 'pos.payment.method',
-                    method: 'now_check_payment_status',
-                    args: [{ invoice_id: line.cryptopay_invoice_id, pm_id: line.payment_method.id, order_id: order_id }],
-                }, {
-                    silent: true,
-                });
-                console.log(api_resp);
-                console.log(api_resp.payment_status);
+/** @odoo-module */
 
-                if (api_resp.payment_status == 'finished') {
-                     console.log("valid now transaction");
-                     line.invoiced_crypto_amount = api_resp.pay_amount;
-                     line.cryptopay_payment_type = api_resp.pay_currency;
-                     let conversion_rate = line.amount/line.invoiced_crypto_amount;
-                     line.conversion_rate = conversion_rate.toFixed(2);
-                     line.crypto_payment_status = 'Invoice Paid';
-                     line.set_payment_status('done');
-				}
-                                else if (api_resp.payment_status == 'waiting' || api_resp.payment_status == 'not_found' || api_resp.payment_status == 'found') {
-	                                this.showPopup("ErrorPopup", {
-       		                                 title: this.env._t("Payment Request Unpaid"),
-               		                         body: this.env._t("Payment Unpaid, retry after customer confirms funds have been sent. Status: " + api_resp.payment_status),
-                       		        });
-                                }
+import { PaymentScreen } from "@point_of_sale/app/screens/payment_screen/payment_screen";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { _t } from "@web/core/l10n/translation";
+import { patch } from "@web/core/utils/patch";
 
-                                else if (api_resp.payment_status == 'confirming' || api_resp.payment_status == 'confirmed' || api_resp.payment_status == 'sending') {
-	                                this.showPopup("ErrorPopup", {
-       		                                 title: this.env._t("Payment Request Pending"),
-               		                         body: this.env._t("Payment Pending, funds are being transferred and will be valid once confirmed. Status: " + api_resp.payment_status),
-                       		        });
-                                }
+const UNPAID = new Set(["waiting", "not_found", "found"]);
+const PENDING = new Set(["confirming", "confirmed", "sending"]);
+const DISPUTED = new Set(["partially_paid", "refunded"]);
+const FAILED = new Set(["expired", "failed"]);
 
-                                else if (api_resp.payment_status == 'partially_paid'  || api_resp.payment_status == 'refunded') {
-	                                this.showPopup("ErrorPopup", {
-       		                                 title: this.env._t("Payment Request Dispute"),
-               		                         body: this.env._t("Payment Pending, partial payment or customer requested refund. Have manager confirm with customer. Status: " + api_resp.payment_status),
-                       		        });
-                                }
-
-
-				else if (api_resp.payment_status == 'expired' || api_resp.payment_status == 'failed') {
-						console.log("expired now transaction");
-				        this.showPopup("ErrorPopup", {
-                                                 title: this.env._t("Payment Request Failed"),
-                                                 body: this.env._t("Payment Request failed, retry to send another send request. Status: " + api_resp.payment_status),
-                                        });
-				}}
-				catch (error) {
-                 console.log(error);
-                 return false;
-             }}
+patch(PaymentScreen.prototype, {
+    async validateOrder(isForceValidate) {
+        for (const line of this.paymentLines) {
+            if (!line.is_crypto_payment || line.payment_method_id.use_payment_terminal !== "now") {
+                continue;
             }
-          super.validateOrder(isForceValidate);
+            let response;
+            try {
+                response = await this.env.services.orm.silent.call(
+                    "pos.payment.method",
+                    "now_check_payment_status",
+                    [{
+                        invoice_id: line.cryptopay_invoice_id,
+                        pm_id: line.payment_method_id.id,
+                        order_id: this.currentOrder.uuid,
+                    }]
+                );
+            } catch (error) {
+                return false;
+            }
+            const status = response.payment_status;
+            if (status === "finished") {
+                line.invoiced_crypto_amount = response.pay_amount;
+                line.cryptopay_payment_type = response.pay_currency;
+                line.conversion_rate = (line.amount / line.invoiced_crypto_amount).toFixed(2);
+                line.crypto_payment_status = _t("Invoice Paid");
+                line.setPaymentStatus("done");
+                continue;
+            }
+            if (UNPAID.has(status)) {
+                this._showNowPaymentsStatus(
+                    _t("Payment Request Unpaid"),
+                    _t("The customer payment has not been found or completed."),
+                    status
+                );
+                line.setPaymentStatus("waitingCard");
+            } else if (PENDING.has(status)) {
+                this._showNowPaymentsStatus(
+                    _t("Payment Request Pending"),
+                    _t("Funds are being transferred and must be confirmed."),
+                    status
+                );
+                line.setPaymentStatus("waitingCard");
+            } else if (DISPUTED.has(status)) {
+                this._showNowPaymentsStatus(
+                    _t("Payment Request Dispute"),
+                    _t("A partial payment or refund requires manager review."),
+                    status
+                );
+                line.setPaymentStatus("waitingCard");
+            } else if (FAILED.has(status)) {
+                this._showNowPaymentsStatus(
+                    _t("Payment Request Failed"),
+                    _t("Retry by sending a new payment request."),
+                    status
+                );
+                line.setPaymentStatus("retry");
+            } else {
+                this._showNowPaymentsStatus(
+                    _t("Unknown Payment Status"),
+                    _t("The payment cannot be validated."),
+                    status || _t("missing")
+                );
+                line.setPaymentStatus("retry");
+            }
+            return false;
         }
-      };
-    // CustomValidatePaymentScreen.template = "point_of_sale.CustomValidatePaymentScreenTemplate";
-  
-    Registries.Component.extend(PaymentScreen, NowValidatePaymentScreen);
-  
-    return NowValidatePaymentScreen;
-  });
-  
+        return super.validateOrder(isForceValidate);
+    },
+
+    _showNowPaymentsStatus(title, message, status) {
+        this.dialog.add(AlertDialog, {
+            title,
+            body: _t("%(message)s Status: %(status)s", { message, status }),
+        });
+    },
+});

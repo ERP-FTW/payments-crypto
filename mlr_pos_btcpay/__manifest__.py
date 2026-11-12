@@ -2,7 +2,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 {
     'name': 'MLR POS Bitcoin Payments - BTCpay',
-    'version': '1.0',
+    'version': '19.0.1.0.0',
     'category': 'Sales/Point of Sale',
     'sequence': 7,
     'summary': 'Integrate your POS with Bitcoin on-chain and lightning payments',

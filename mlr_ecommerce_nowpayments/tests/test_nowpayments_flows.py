@@ -63,7 +63,9 @@ class TestNowPaymentsFlows(NowPaymentsCommon, PaymentHttpCommon):
 
     def test_invoice_uses_the_transaction_provider_of_its_company(self):
         company_b = self.env['res.company'].create({'name': 'NOWPayments Company B'})
-        provider_b = self._prepare_provider('now', company=company_b, update_values={
+        provider_b = self.provider.copy({
+            'company_id': company_b.id,
+            'state': 'test',
             'is_crypto_provider': True,
             'crypto_server_url': 'https://api-sandbox.nowpayments.io',
             'crypto_api_key': 'np-api-key-SECRET-B',

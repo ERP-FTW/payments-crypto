@@ -1,104 +1,100 @@
-/* global StripeTerminal */
-odoo.define('pos_cryptopayment.payment', function (require) {
-"use strict";
+/** @odoo-module */
 
-const core = require('web.core');
-const rpc = require('web.rpc');
-const PaymentInterface = require('point_of_sale.PaymentInterface');
-const { Gui } = require('point_of_sale.Gui');
+import { PaymentInterface } from "@point_of_sale/app/utils/payment/payment_interface";
+import { register_payment_method } from "@point_of_sale/app/services/pos_store";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { _t } from "@web/core/l10n/translation";
 
-const _t = core._t;
+const POLL_ATTEMPTS = 100;
+const POLL_DELAY_MS = 50000;
 
-let PaymentCryptoPayment = PaymentInterface.extend({
-    init: function (pos, payment_method) {
-        this._super(...arguments);
-    },
-
-    send_payment_request: async function (cid) {
-        let line = this.pos.get_order().selected_paymentline;
-        let order_id = this.pos.get_order().uid;
-        console.log(line.payment_method.id);
-        console.log(line.payment_method.use_payment_terminal);
-        await this._super.apply(this, arguments);
-        let data = null;
+export class PaymentNowPayments extends PaymentInterface {
+    async sendPaymentRequest(uuid) {
+        await super.sendPaymentRequest(...arguments);
+        const order = this.pos.getOrder();
+        const line = order?.payment_ids.find((payment) => payment.uuid === uuid);
+        if (!order || !line) {
+            return false;
+        }
+        let data;
         try {
-	      data = await rpc.query({
-              model: 'pos.payment.method',
-              method: 'create_crypto_invoice',
-              args: [{pm_id: line.payment_method.id, amount: line.amount, order_id: order_id}],
-            }, {
-                silent: true,
-            });
+            data = await this.env.services.orm.silent.call(
+                "pos.payment.method",
+                "create_crypto_invoice",
+                [{ pm_id: line.payment_method_id.id, amount: line.amount, order_id: order.uuid }]
+            );
+        } catch (error) {
+            this._showError(_t("Unable to create the NOWPayments invoice."));
+            return false;
         }
-        catch (error) {
-           return false
+        if (data.code !== "0") {
+            this._showError(_t("NOWPayments invoice creation failed (code %s).", data.code));
+            return false;
         }
-      if(data.code != '0'){
-            alert('Create invoice error:'+ data.code);
-            return false;}
         const codeWriter = new window.ZXing.BrowserQRCodeSvgWriter();
-        let qr_code_svg = new XMLSerializer().serializeToString(codeWriter.write(data.cryptopay_payment_link, 150, 150));
+        const qrCodeSvg = new XMLSerializer().serializeToString(
+            codeWriter.write(data.cryptopay_payment_link, 150, 150)
+        );
         line.is_crypto_payment = true;
-        console.log(line.is_crypto_payment);
         line.cryptopay_payment_link = data.cryptopay_payment_link;
-        line.cryptopay_payment_link_qr_code = "data:image/svg+xml;base64,"+ window.btoa(qr_code_svg);
+        line.cryptopay_payment_link_qr_code =
+            "data:image/svg+xml;base64," + window.btoa(qrCodeSvg);
         line.cryptopay_invoice_id = data.invoice_id;
         line.conversion_rate = data.conversion_rate;
         line.invoiced_crypto_amount = data.crypto_amt;
-        line.set_payment_status('cryptowaiting');
+        line.setPaymentStatus("waitingCard");
+        return this._checkPaymentStatus(line, order.uuid);
+    }
 
-        return this._check_payment_status(line);
-    },
+    async sendPaymentCancel(order, uuid) {
+        await super.sendPaymentCancel(...arguments);
+        return true;
+    }
 
-    send_payment_cancel: async function (order, cid) {
-        this._super.apply(this, arguments);
-    },
-
-    _check_payment_status: async function (line) {
-        let api_resp = null;
-
-try {
-        let order_id = this.pos.get_order().uid;
-        console.log(order_id);
-        console.log(line.payment_method.id);
-        for (let i = 0; i < 100; i++) {
-            line.crypto_payment_status = 'Checking Invoice status '+(i+1)+'/100';
+    async _checkPaymentStatus(line, orderId) {
+        for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+            line.crypto_payment_status = _t(
+                "Checking invoice status %(attempt)s/%(total)s",
+                { attempt: attempt + 1, total: POLL_ATTEMPTS }
+            );
+            let response;
             try {
-                api_resp = await rpc.query({
-                    model: 'pos.payment.method',
-                    method: 'now_check_payment_status',
-                    args: [{ invoice_id: line.cryptopay_invoice_id, pm_id: line.payment_method.id, order_id: order_id }],
-                }, {
-                    silent: true,
-                });
-
-                if (api_resp.payment_status == 'finished') {
-                    line.crypto_payment_status = 'Invoice Paid';
-                    line.invoiced_crypto_amount = api_resp.pay_amount;
-                    let conversion_rate = line.amount/line.invoiced_crypto_amount;
-                    line.conversion_rate = conversion_rate.toFixed(2);
-                    line.cryptopay_payment_type = api_resp.pay_currency;
-                    console.log(api_resp.pay_currency);
-                    console.log(line.cryptopay_payment_type);
-                    return true;
-                }
-
+                response = await this.env.services.orm.silent.call(
+                    "pos.payment.method",
+                    "now_check_payment_status",
+                    [{
+                        invoice_id: line.cryptopay_invoice_id,
+                        pm_id: line.payment_method_id.id,
+                        order_id: orderId,
+                    }]
+                );
             } catch (error) {
-                 console.log(error);
-                 return false;
-             }
-
-	   await new Promise(r => setTimeout(r, 50000));
+                return false;
+            }
+            if (response.payment_status === "finished") {
+                line.crypto_payment_status = _t("Invoice Paid");
+                line.invoiced_crypto_amount = response.pay_amount;
+                line.conversion_rate = (line.amount / line.invoiced_crypto_amount).toFixed(2);
+                line.cryptopay_payment_type = response.pay_currency;
+                return true;
+            }
+            if (["expired", "failed", "refunded"].includes(response.payment_status)) {
+                this._showError(
+                    _t("The NOWPayments invoice ended with status %s.", response.payment_status)
+                );
+                return false;
+            }
+            await new Promise((resolve) => setTimeout(resolve, POLL_DELAY_MS));
         }
-}
-catch (error) {
-  console.error("An error occurred:", error.message);
-} finally {
-  console.log("Completed ");
-}
-       return false;
-    },
-});
+        return false;
+    }
 
-return PaymentCryptoPayment;
-});
+    _showError(body) {
+        this.env.services.dialog.add(AlertDialog, {
+            title: _t("Cryptocurrency Payment"),
+            body,
+        });
+    }
+}
+
+register_payment_method("now", PaymentNowPayments);

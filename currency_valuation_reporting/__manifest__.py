@@ -1,6 +1,6 @@
 {
     "name": "Currency Valuation Reporting",
-    "version": "18.0.1.0.0",
+    "version": "19.0.1.0.0",
     "category": "Accounting",
     "summary": "Reporting tools for cryptocurrency inventory valuation",
     "license": "AGPL-3",

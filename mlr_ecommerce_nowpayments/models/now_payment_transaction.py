@@ -109,32 +109,30 @@ class PaymentTransaction(models.Model):
 
     # === Notification handling === #
 
-    def _get_tx_from_notification_data(self, provider_code, notification_data):
-        tx = super()._get_tx_from_notification_data(provider_code, notification_data)
-        if provider_code != 'now' or len(tx) == 1:
-            return tx
+    @api.model
+    def _extract_reference(self, provider_code, payment_data):
+        if provider_code != 'now':
+            return super()._extract_reference(provider_code, payment_data)
+        return payment_data.get('order_id')
 
-        reference = notification_data.get('order_id')
-        if not reference:
-            raise ValidationError("NOWPayments: " + _("Received data with missing order id."))
-        tx = self.search([('reference', '=', reference), ('provider_code', '=', 'now')])
-        if not tx:
-            raise ValidationError(
-                "NOWPayments: " + _("No transaction found matching reference %s.", reference))
-        return tx
+    def _extract_amount_data(self, payment_data):
+        # The callback payload only identifies the payment. Amount and currency are verified by
+        # _apply_updates after re-reading the payment from NOWPayments.
+        if self.provider_code == 'now':
+            return None
+        return super()._extract_amount_data(payment_data)
 
-    def _process_notification_data(self, notification_data):
+    def _apply_updates(self, payment_data):
         """Apply the provider's verified state to the transaction.
 
         `notification_data` only says which payment to look at. Status, amount and currency are
         re-read from NOWPayments with this transaction's provider, so neither the browser nor the
         body of a callback can confirm a payment.
         """
-        super()._process_notification_data(notification_data)
         if self.provider_code != 'now':
-            return
+            return super()._apply_updates(payment_data)
 
-        payment_id = notification_data.get('payment_id')
+        payment_id = payment_data.get('payment_id')
         if not payment_id:
             raise ValidationError("NOWPayments: " + _("Received data with missing payment id."))
         verified = self.provider_id._nowpayments_make_request(f'/v1/payment/{payment_id}')
@@ -265,7 +263,7 @@ class PaymentTransaction(models.Model):
                 return 2
             return 3
         best = sorted(payments, key=rank)[0]
-        self._handle_notification_data('now', {
+        self._process('now', {
             'order_id': self.reference, 'payment_id': best.get('payment_id'),
         })
 

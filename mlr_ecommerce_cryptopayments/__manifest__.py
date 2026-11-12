@@ -4,7 +4,7 @@
     "author": "MLR - MI Lightning Rod",
     "website": "https://www.milightningrod.com",
     "category": "Ecommerce",
-    "version": "18.0",
+    "version": "19.0.1.0.0",
     "depends": ["website", "website_sale"],
     'images': ['static/description/icon.png'],
     "data": [

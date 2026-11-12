@@ -75,16 +75,17 @@
                         <group>
                             <field name="name" />
                             <field name="payment_id" />
-                            <field name="currency_id" />
-                            <field name="date" />
-                            <field name="direction" />
-                            <field name="amount" widget="monetary" />
-                            <field name="journal_id" />
+                            <field name="currency_id" readonly="state != 'draft'" />
+                            <field name="date" readonly="state != 'draft'" />
+                            <field name="direction" readonly="state != 'draft'" />
+                            <field name="amount" widget="monetary" readonly="state != 'draft'" />
+                            <field name="journal_id" readonly="state != 'draft'" />
                             <field name="debit_account_id" />
                             <field name="credit_account_id" />
                             <field
                                 name="company_id"
                                 groups="base.group_multi_company"
+                                readonly="state != 'draft'"
                             />
                         </group>
                         <group>
@@ -94,7 +95,7 @@
                     <notebook>
                         <page name="move_lines" string="Move Lines">
                             <group>
-                                <field name="line_ids" nolabel="1" />
+                                <field name="line_ids" nolabel="1" readonly="state != 'draft'" />
                             </group>
                         </page>
                     </notebook>

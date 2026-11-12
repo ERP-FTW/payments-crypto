@@ -149,9 +149,13 @@ class NowPaymentsController(Controller):
         _logger.info("NOWPayments notification for order %s payment %s status %s",
                      data.get('order_id'), data.get('payment_id'), data.get('payment_status'))
         try:
-            tx_sudo = request.env['payment.transaction'].sudo()._get_tx_from_notification_data(
+            tx_sudo = request.env['payment.transaction'].sudo()._search_by_reference(
                 'now', data)
         except ValidationError:
+            _logger.warning("NOWPayments: notification for unknown order %s", data.get('order_id'))
+            return request.make_json_response('')
+
+        if not tx_sudo:
             _logger.warning("NOWPayments: notification for unknown order %s", data.get('order_id'))
             return request.make_json_response('')
 
@@ -164,7 +168,7 @@ class NowPaymentsController(Controller):
             raise Forbidden()
 
         try:
-            tx_sudo._handle_notification_data('now', {
+            tx_sudo._process('now', {
                 'order_id': tx_sudo.reference, 'payment_id': data.get('payment_id'),
             })
         except NowPaymentsUnavailable as error:

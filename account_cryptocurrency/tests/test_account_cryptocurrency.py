@@ -11,67 +11,57 @@ class TestAccountCryptocurrency(common.TransactionCase):
     def setUp(self):
         res = super(TestAccountCryptocurrency, self).setUp()
         self.company = self.env.ref("base.main_company")
-        self.receivable_account = self.env["account.account"].search(
-            [
-                (
-                    "user_type_id",
-                    "=",
-                    self.env.ref("account.data_account_type_receivable").id,
-                ),
-                ("company_id", "=", self.company.id),
-            ],
-            limit=1,
+        account_model = self.env["account.account"]
+        company_ids = [(6, 0, [self.company.id])]
+        self.receivable_account = account_model.create(
+            {
+                "name": "Test Receivable",
+                "code": "TREC",
+                "account_type": "asset_receivable",
+                "reconcile": True,
+                "company_ids": company_ids,
+            }
         )
-        self.payable_account = self.env["account.account"].search(
-            [
-                (
-                    "user_type_id",
-                    "=",
-                    self.env.ref("account.data_account_type_payable").id,
-                ),
-                ("company_id", "=", self.company.id),
-            ],
-            limit=1,
+        self.payable_account = account_model.create(
+            {
+                "name": "Test Payable",
+                "code": "TPAY",
+                "account_type": "liability_payable",
+                "reconcile": True,
+                "company_ids": company_ids,
+            }
         )
-        self.account_expenses = self.env["account.account"].search(
-            [
-                (
-                    "user_type_id",
-                    "=",
-                    self.env.ref("account.data_account_type_expenses").id,
-                ),
-                ("company_id", "=", self.company.id),
-            ],
-            limit=1,
+        self.account_expenses = account_model.create(
+            {
+                "name": "Test Expenses",
+                "code": "TEXP",
+                "account_type": "expense",
+                "company_ids": company_ids,
+            }
         )
-        self.account_revenue = self.env["account.account"].search(
-            [
-                (
-                    "user_type_id",
-                    "=",
-                    self.env.ref("account.data_account_type_revenue").id,
-                ),
-                ("company_id", "=", self.company.id),
-            ],
-            limit=1,
+        self.account_revenue = account_model.create(
+            {
+                "name": "Test Revenue",
+                "code": "TREV",
+                "account_type": "income",
+                "company_ids": company_ids,
+            }
         )
 
         self.inventory_account = self.env["account.account"].create(
             {
                 "name": "CC Inventory",
                 "code": "9991",
-                "company_id": self.company.id,
-                "user_type_id": self.env.ref(
-                    "account.data_account_type_current_assets"
-                ).id,
+                "company_ids": [(6, 0, [self.company.id])],
+                "account_type": "asset_current",
             }
         )
         self.to_inventory_account = self.env["account.account"].create(
             {
                 "name": "CC To Inventory",
                 "code": "9992",
-                "company_id": self.company.id,
-                "user_type_id": self.env.ref("account.data_account_type_expenses").id,
+                "company_ids": [(6, 0, [self.company.id])],
+                "account_type": "expense",
             }
         )
         self.company.income_currency_exchange_account_id = self.env[
@@ -80,8 +70,8 @@ class TestAccountCryptocurrency(common.TransactionCase):
             {
                 "name": "Exchange Profit",
                 "code": "9993",
-                "company_id": self.company.id,
-                "user_type_id": self.env.ref("account.data_account_type_revenue").id,
+                "company_ids": [(6, 0, [self.company.id])],
+                "account_type": "income",
             }
         )
         self.company.expense_currency_exchange_account_id = self.env[
@@ -90,8 +80,16 @@ class TestAccountCryptocurrency(common.TransactionCase):
             {
                 "name": "Exchange Loss",
                 "code": "9994",
+                "company_ids": [(6, 0, [self.company.id])],
+                "account_type": "expense",
+            }
+        )
+        self.company.currency_exchange_journal_id = self.env["account.journal"].create(
+            {
+                "name": "Exchange Gain or Loss (TEST)",
+                "code": "EXCT",
+                "type": "general",
                 "company_id": self.company.id,
-                "user_type_id": self.env.ref("account.data_account_type_expenses").id,
             }
         )
         self.currency_cc = (
@@ -121,6 +119,9 @@ class TestAccountCryptocurrency(common.TransactionCase):
                 "property_account_payable_id": self.payable_account.id,
             }
         )
+        self.product = self.env["product.product"].create(
+            {"name": "Cryptocurrency test product"}
+        )
         self.sale_journal = self.env["account.journal"].create(
             {
                 "name": "Customer Invoices (TEST)",
@@ -146,9 +147,13 @@ class TestAccountCryptocurrency(common.TransactionCase):
                 "type": "bank",
                 "company_id": self.company.id,
                 "default_account_id": self.to_inventory_account.id,
-                "payment_debit_account_id": self.to_inventory_account.id,
-                "payment_credit_account_id": self.to_inventory_account.id,
             }
+        )
+        self.cc_journal.inbound_payment_method_line_ids.write(
+            {"payment_account_id": self.to_inventory_account.id}
+        )
+        self.cc_journal.outbound_payment_method_line_ids.write(
+            {"payment_account_id": self.to_inventory_account.id}
         )
         # We want to make sure that the company has no rates, that would
         # screw up the conversions.
@@ -196,7 +201,7 @@ class TestAccountCryptocurrency(common.TransactionCase):
                         0,
                         0,
                         {
-                            "product_id": self.env.ref("product.product_product_4").id,
+                            "product_id": self.product.id,
                             "quantity": 1.0,
                             "price_unit": 100.0,
                             "name": "product that cost 100",
@@ -258,7 +263,7 @@ class TestAccountCryptocurrency(common.TransactionCase):
         )
         (invoice_line_id + payment_line_id).reconcile()
         self.assertEqual(invoice_cust_001.state, "posted")
-        self.assertEqual(payment_line_id.amount_currency, -50.0)
+        self.assertAlmostEqual(payment_line_id.amount_currency, -50.0)
         self.assertEqual(payment_line_id.credit, 40.0)
         # Inventory of CC (day 2)
         # ----------------------
@@ -321,7 +326,7 @@ class TestAccountCryptocurrency(common.TransactionCase):
         )
         (invoice_line_id + payment_line_id).reconcile()
         self.assertEqual(invoice_cust_001.payment_state, "paid")
-        self.assertEqual(payment_line_id.amount_currency, -50.0)
+        self.assertAlmostEqual(payment_line_id.amount_currency, -50.0)
         self.assertEqual(payment_line_id.credit, 100.0)
         # Inventory of CC (day 3)
         # -----------------------
@@ -379,7 +384,7 @@ class TestAccountCryptocurrency(common.TransactionCase):
                         0,
                         0,
                         {
-                            "product_id": self.env.ref("product.product_product_4").id,
+                            "product_id": self.product.id,
                             "quantity": 1.0,
                             "price_unit": 60.0,
                             "name": "product that cost 100",
@@ -537,7 +542,7 @@ class TestAccountCryptocurrency(common.TransactionCase):
                         0,
                         0,
                         {
-                            "product_id": self.env.ref("product.product_product_4").id,
+                            "product_id": self.product.id,
                             "quantity": 1.0,
                             "price_unit": 100.0,
                             "name": "product that cost 100",

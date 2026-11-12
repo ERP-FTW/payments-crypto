@@ -38,7 +38,6 @@ class ResCurrencyMove(models.Model):
     amount = fields.Float(
         "Amount",
         readonly=True,
-        states={"draft": [("readonly", False)]},
     )
     currency_id = fields.Many2one(
         "res.currency",
@@ -46,7 +45,6 @@ class ResCurrencyMove(models.Model):
         readonly=True,
         ondelete="restrict",
         required=True,
-        states={"draft": [("readonly", False)]},
         domain="[('inventoried', '=', True)]",
     )
     date = fields.Date(
@@ -55,14 +53,12 @@ class ResCurrencyMove(models.Model):
         default=fields.Date.context_today,
         required=True,
         copy=False,
-        states={"draft": [("readonly", False)]},
     )
     journal_id = fields.Many2one(
         "account.journal",
         string="Account Journal",
         readonly=True,
         required=True,
-        states={"draft": [("readonly", False)]},
     )
     debit_account_id = fields.Many2one("account.account", compute="_compute_accounts")
     credit_account_id = fields.Many2one("account.account", compute="_compute_accounts")
@@ -71,14 +67,12 @@ class ResCurrencyMove(models.Model):
         required=True,
         readonly=True,
         default="draft",
-        states={"draft": [("readonly", False)]},
     )
     company_id = fields.Many2one(
         "res.company",
         string="Company",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
         change_default=True,
         default=lambda self: self.env["res.company"]._company_default_get(
             "res.currency.move"
@@ -89,7 +83,6 @@ class ResCurrencyMove(models.Model):
         string="Direction",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
     )
     line_ids = fields.One2many(
         "res.currency.move.line",
@@ -97,7 +90,6 @@ class ResCurrencyMove(models.Model):
         string="Currency move lines",
         copy=False,
         readonly=True,
-        states={"draft": [("readonly", False)]},
     )
 
     @api.depends("currency_id", "journal_id", "direction")
@@ -117,13 +109,14 @@ class ResCurrencyMove(models.Model):
     def _get_sequence(self):
         return "res.currency.move"
 
-    @api.model
-    def create(self, vals):
-        if not vals.get("name"):
-            vals["name"] = self.env["ir.sequence"].next_by_code(
-                self._get_sequence()
-            ) or _("New")
-        return super().create(vals)
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get("name"):
+                vals["name"] = self.env["ir.sequence"].next_by_code(
+                    self._get_sequence()
+                ) or _("New")
+        return super().create(vals_list)
 
     def _prepare_incoming_move_line(self):
         self.ensure_one()

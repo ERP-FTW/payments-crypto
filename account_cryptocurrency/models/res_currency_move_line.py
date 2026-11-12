@@ -21,7 +21,7 @@ class ResCurrencyMoveLine(models.Model):
         "res.currency.move",
         string="Currency Move",
         ondelete="cascade",
-        required="True",
+        required=True,
         readonly=True,
     )
     date = fields.Date(

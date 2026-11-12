@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'POS Crypto Payments',
-    'version': '1.0',
+    'version': '19.0.1.0.0',
     'category': 'Sales/Point of Sale',
     'sequence': 6,
     'summary': 'Integrate your POS with Crypto on-chain and payments',
